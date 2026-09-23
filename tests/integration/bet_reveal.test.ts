@@ -125,4 +125,59 @@ describe('place_bet / reveal_turn', () => {
     const { error } = await host.rpc('reveal_turn', { p_turn_id: firstTurn.id })
     expect(error).not.toBeNull()
   })
+
+  it('rejects a bet whose team belongs to a different party than the turn', async () => {
+    // Party A: the turn under bet.
+    const hostA = await signUpAndSignIn()
+    const { data: partyA } = await hostA.rpc('create_party', { p_team_size: 2, p_rounds: 1 }).single()
+    await hostA.rpc('join_party', { p_room_code: partyA.room_code, p_display_name: 'HostA', p_avatar: '🧠' })
+    const clientsA = [hostA]
+    for (let i = 1; i < 4; i++) {
+      const c = await signUpAndSignIn()
+      await c.rpc('join_party', { p_room_code: partyA.room_code, p_display_name: `A${i}`, p_avatar: '🙂' })
+      clientsA.push(c)
+    }
+    await hostA.rpc('shuffle_teams', { p_party_id: partyA.id }) // 2 teams of 2
+    const { data: firstTurnA } = await hostA.rpc('start_game', { p_party_id: partyA.id }).single()
+    const { data: playersA } = await hostA.from('players').select('*').eq('party_id', partyA.id)
+    const accountIdToClientA = await buildAccountIdToClient(clientsA)
+    const psychicRowA = playersA!.find((p) => p.id === firstTurnA.psychic_player_id)!
+    const psychicClientA = accountIdToClientA.get(psychicRowA.account_id)!
+    await psychicClientA.rpc('submit_clue', { p_turn_id: firstTurnA.id, p_clue_text: 'x', p_skipped: false })
+    await psychicClientA.rpc('lock_guess', { p_turn_id: firstTurnA.id, p_guess_position: 0.5 })
+    // firstTurnA is now in 'betting' status.
+
+    // Party B: unrelated party. One of its players genuinely belongs to a
+    // team_id that is NOT firstTurnA's active team_id (trivially true, since
+    // it's a different party's team altogether).
+    const hostB = await signUpAndSignIn()
+    const { data: partyB } = await hostB.rpc('create_party', { p_team_size: 2, p_rounds: 1 }).single()
+    await hostB.rpc('join_party', { p_room_code: partyB.room_code, p_display_name: 'HostB', p_avatar: '🧠' })
+    await hostB.rpc('shuffle_teams', { p_party_id: partyB.id })
+    const { data: teamsB } = await hostB.from('teams').select('*').eq('party_id', partyB.id)
+    const hostBTeamId = teamsB![0].id
+
+    // hostB is genuinely a member of hostBTeamId, and hostBTeamId != firstTurnA.team_id,
+    // so both of place_bet's pre-fix checks would have passed. The new party-match
+    // check must reject this cross-party bet.
+    const { error } = await hostB.rpc('place_bet', { p_turn_id: firstTurnA.id, p_team_id: hostBTeamId, p_direction: 'left' })
+    expect(error).not.toBeNull()
+  })
+
+  it('rejects reveal_turn from a caller who is not a member of the turn\'s party', async () => {
+    const host = await signUpAndSignIn()
+    const { data: party } = await host.rpc('create_party', { p_team_size: 2, p_rounds: 1 }).single()
+    await host.rpc('join_party', { p_room_code: party.room_code, p_display_name: 'Host', p_avatar: '🧠' })
+    for (let i = 1; i < 4; i++) {
+      const c = await signUpAndSignIn()
+      await c.rpc('join_party', { p_room_code: party.room_code, p_display_name: `P${i}`, p_avatar: '🙂' })
+    }
+    await host.rpc('shuffle_teams', { p_party_id: party.id })
+    const { data: firstTurn } = await host.rpc('start_game', { p_party_id: party.id }).single()
+
+    // A totally unrelated authenticated user, not a member of this party at all.
+    const outsider = await signUpAndSignIn()
+    const { error } = await outsider.rpc('reveal_turn', { p_turn_id: firstTurn.id })
+    expect(error).not.toBeNull()
+  })
 })

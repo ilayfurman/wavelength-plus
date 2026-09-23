@@ -15,18 +15,23 @@ async function setUpGame(teamCount: 1 | 2) {
   await host.rpc('shuffle_teams', { p_party_id: party.id })
   const { data: firstTurn } = await host.rpc('start_game', { p_party_id: party.id }).single()
 
-  const { data: psychicPlayer } = await host.from('players').select('*').eq('id', firstTurn.psychic_player_id).single()
+  const { data: players } = await host.from('players').select('*').eq('party_id', party.id)
+  const psychicPlayer = players!.find((p) => p.id === firstTurn.psychic_player_id)!
   const allClients = [host, ...others]
-  let psychicClient = host
+  const accountIdToClient = new Map<string, (typeof allClients)[number]>()
   for (const c of allClients) {
     const { data: userData } = await c.auth.getUser()
-    if (userData.user!.id === psychicPlayer!.account_id) {
-      psychicClient = c
-      break
-    }
+    accountIdToClient.set(userData.user!.id, c)
   }
+  const psychicClient = accountIdToClient.get(psychicPlayer.account_id)!
 
-  return { host, others, party, firstTurn, psychicClient }
+  // A client on a different team than the active team, if one exists (teamCount === 2).
+  // Derived from actual team membership rather than signup order, so it stays correct
+  // even if psychic-selection logic changes in the future.
+  const otherTeamPlayer = players!.find((p) => p.team_id !== firstTurn.team_id)
+  const otherTeamClient = otherTeamPlayer ? accountIdToClient.get(otherTeamPlayer.account_id)! : undefined
+
+  return { host, others, party, firstTurn, psychicClient, otherTeamClient }
 }
 
 describe('submit_clue', () => {
@@ -41,10 +46,8 @@ describe('submit_clue', () => {
   })
 
   it('rejects a clue from someone who is not the psychic', async () => {
-    const { host, psychicClient, firstTurn } = await setUpGame(2)
-    const impostor = psychicClient === host ? undefined : host
-    if (!impostor) return // psychic happened to be host in this random shuffle; skip
-    const { error } = await impostor.rpc('submit_clue', { p_turn_id: firstTurn.id, p_clue_text: 'x', p_skipped: false })
+    const { otherTeamClient, firstTurn } = await setUpGame(2)
+    const { error } = await otherTeamClient!.rpc('submit_clue', { p_turn_id: firstTurn.id, p_clue_text: 'x', p_skipped: false })
     expect(error).not.toBeNull()
   })
 })
@@ -67,11 +70,9 @@ describe('lock_guess', () => {
   })
 
   it('rejects a guess from a player not on the active team', async () => {
-    const { host, psychicClient, firstTurn } = await setUpGame(2)
+    const { psychicClient, otherTeamClient, firstTurn } = await setUpGame(2)
     await psychicClient.rpc('submit_clue', { p_turn_id: firstTurn.id, p_clue_text: 'x', p_skipped: false })
-    const impostor = psychicClient === host ? undefined : host
-    if (!impostor) return // psychic happened to be host in this random shuffle; skip
-    const { error } = await impostor.rpc('lock_guess', { p_turn_id: firstTurn.id, p_guess_position: 0.6 })
+    const { error } = await otherTeamClient!.rpc('lock_guess', { p_turn_id: firstTurn.id, p_guess_position: 0.6 })
     expect(error).not.toBeNull()
   })
 
