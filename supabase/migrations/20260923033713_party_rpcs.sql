@@ -88,13 +88,3 @@ end;
 $$;
 
 grant execute on function public.join_party(text, text, text) to authenticated;
-
--- Update party_packs RLS policy to allow host or party members to read packs
-drop policy "select party_packs if member" on public.party_packs;
-
-create policy "select party_packs if member" on public.party_packs for select
-using (
-  exists (select 1 from public.players pl where pl.party_id = party_packs.party_id and pl.account_id = auth.uid())
-  or
-  exists (select 1 from public.parties p where p.id = party_packs.party_id and p.host_id = auth.uid())
-);

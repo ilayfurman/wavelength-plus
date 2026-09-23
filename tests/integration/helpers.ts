@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { randomUUID } from 'crypto'
 
 const LOCAL_URL = 'http://127.0.0.1:54321'
 // This is the well-known local Supabase anon key printed by `supabase start`.
@@ -8,12 +9,9 @@ export function anonClient(): SupabaseClient {
   return createClient(LOCAL_URL, LOCAL_ANON_KEY)
 }
 
-let counter = 0
-
 export async function signUpAndSignIn(): Promise<SupabaseClient> {
   const client = anonClient()
-  counter += 1
-  const email = `test-user-${Date.now()}-${counter}@example.com`
+  const email = `test-user-${randomUUID()}@example.com`
   const password = 'password123!'
   const { error: signUpError } = await client.auth.signUp({ email, password })
   if (signUpError) throw signUpError

@@ -9,6 +9,8 @@ describe('create_party / join_party', () => {
     expect(data.room_code).toMatch(/^[A-Z]{4}$/)
     expect(data.status).toBe('lobby')
 
+    await host.rpc('join_party', { p_room_code: data.room_code, p_display_name: 'Host', p_avatar: '🧠' }).single()
+
     const { data: packs } = await host.from('party_packs').select('pack_id').eq('party_id', data.id)
     expect(packs?.length).toBe(1)
   })
