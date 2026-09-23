@@ -11,7 +11,6 @@ declare
   team_players uuid[];
   player_id uuid;
   round_num int;
-  first_entry jsonb;
   first_spectrum_id uuid;
   first_turn public.turns;
   first_team_id uuid;
@@ -52,8 +51,7 @@ begin
 
   update public.parties
   set status = 'playing', turn_order = order_entries, turn_index = 0
-  where id = p_party_id
-  returning * into party_row;
+  where id = p_party_id;
 
   insert into public.turns (party_id, round_number, team_id, psychic_player_id, spectrum_id, target_position)
   values (p_party_id, 1, first_team_id, first_psychic_id, first_spectrum_id, random())

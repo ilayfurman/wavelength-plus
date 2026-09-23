@@ -22,4 +22,35 @@ describe('start_game', () => {
     // 4 players total, 2 rounds -> 8 turn_order entries
     expect((updatedParty!.turn_order as unknown[]).length).toBe(8)
   })
+
+  it('gives each team turns equal to its own player count per round, even when teams are uneven', async () => {
+    const host = await signUpAndSignIn()
+    const { data: party } = await host.rpc('create_party', { p_team_size: 3, p_rounds: 1 }).single()
+    await host.rpc('join_party', { p_room_code: party.room_code, p_display_name: 'Host', p_avatar: '🧠' })
+    // 5 total players with team_size=3 -> shuffle_teams should produce one team of 3 and one team of 2
+    for (let i = 0; i < 4; i++) {
+      const c = await signUpAndSignIn()
+      await c.rpc('join_party', { p_room_code: party.room_code, p_display_name: `P${i}`, p_avatar: '🙂' })
+    }
+    await host.rpc('shuffle_teams', { p_party_id: party.id })
+
+    const { data: teams } = await host.from('teams').select('id').eq('party_id', party.id)
+    const { data: players } = await host.from('players').select('team_id').eq('party_id', party.id)
+    const counts = teams!.map((t) => players!.filter((p) => p.team_id === t.id).length)
+    // Sanity-check the fixture is actually uneven before trusting the turn_order assertion below
+    expect(new Set(counts).size).toBeGreaterThan(1)
+
+    await host.rpc('start_game', { p_party_id: party.id })
+    const { data: updatedParty } = await host.from('parties').select('turn_order').eq('id', party.id).single()
+    const order = updatedParty!.turn_order as { team_id: string }[]
+
+    // With 1 round, total turn_order length should equal total player count (5),
+    // and each team's entry count should equal that team's own player count.
+    expect(order.length).toBe(5)
+    for (const team of teams!) {
+      const teamPlayerCount = players!.filter((p) => p.team_id === team.id).length
+      const teamTurnCount = order.filter((entry) => entry.team_id === team.id).length
+      expect(teamTurnCount).toBe(teamPlayerCount)
+    }
+  })
 })
