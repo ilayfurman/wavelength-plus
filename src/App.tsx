@@ -7,9 +7,82 @@ import { AvatarPicker } from './features/party/AvatarPicker'
 import { createParty } from './features/party/CreateParty'
 import { joinParty } from './features/party/JoinParty'
 import { Lobby } from './features/party/Lobby'
+import { GameScreen } from './features/game/GameScreen'
+import { FinalScoreboard } from './features/game/FinalScoreboard'
 import { supabase } from './lib/supabaseClient'
 
 type Route = { name: 'home' } | { name: 'join'; roomCode: string } | { name: 'lobby'; partyId: string; roomCode: string; isHost: boolean }
+
+function PartyRoom({ partyId, roomCode, isHost }: { partyId: string; roomCode: string; isHost: boolean }) {
+  const [status, setStatus] = useState<'lobby' | 'playing' | 'finished'>('lobby')
+  const [currentTurnId, setCurrentTurnId] = useState<string | null>(null)
+  const [teams, setTeams] = useState<{ id: string; name: string; score: number }[]>([])
+  const [myPlayerId, setMyPlayerId] = useState<string | null>(null)
+  const [myTeamId, setMyTeamId] = useState<string | null>(null)
+
+  async function reloadPartyState() {
+    const { data: party } = await supabase.from('parties').select('status').eq('id', partyId).single()
+    setStatus(party!.status)
+    const { data: teamRows } = await supabase.from('teams').select('id, name, score').eq('party_id', partyId)
+    setTeams(teamRows ?? [])
+    const { data: turnRows } = await supabase
+      .from('turns_view')
+      .select('id')
+      .eq('party_id', partyId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+    setCurrentTurnId(turnRows?.[0]?.id ?? null)
+    const userId = (await supabase.auth.getUser()).data.user?.id
+    const { data: me } = await supabase.from('players').select('id, team_id').eq('party_id', partyId).eq('account_id', userId).single()
+    setMyPlayerId(me?.id ?? null)
+    setMyTeamId(me?.team_id ?? null)
+  }
+
+  useEffect(() => {
+    reloadPartyState()
+    const channel = supabase
+      .channel(`party-room:${partyId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'parties', filter: `id=eq.${partyId}` }, reloadPartyState)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'turns', filter: `party_id=eq.${partyId}` }, reloadPartyState)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams', filter: `party_id=eq.${partyId}` }, reloadPartyState)
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partyId])
+
+  if (status === 'lobby') {
+    return (
+      <Lobby
+        partyId={partyId}
+        roomCode={roomCode}
+        isHost={isHost}
+        onStartGame={async () => {
+          await supabase.rpc('start_game', { p_party_id: partyId })
+        }}
+      />
+    )
+  }
+  if (status === 'playing' && currentTurnId && myPlayerId && myTeamId) {
+    return <GameScreen turnId={currentTurnId} myPlayerId={myPlayerId} myTeamId={myTeamId} teams={teams} isHost={isHost} />
+  }
+  if (status === 'finished') {
+    return (
+      <FinalScoreboard
+        teams={teams}
+        onPlayAgain={async () => {
+          await supabase.rpc('start_game', { p_party_id: partyId })
+        }}
+        onNewTeams={async () => {
+          await supabase.rpc('shuffle_teams', { p_party_id: partyId })
+          await supabase.rpc('start_game', { p_party_id: partyId })
+        }}
+      />
+    )
+  }
+  return <div>Loading…</div>
+}
 
 function Gate() {
   const { session, loading } = useAuth()
@@ -49,14 +122,7 @@ function Gate() {
           <Home onCreate={handleCreate} onJoin={(code) => handleJoin(code)} />
         </div>
       ) : (
-        <Lobby
-          partyId={route.partyId}
-          roomCode={route.roomCode}
-          isHost={route.isHost}
-          onStartGame={async () => {
-            await supabase.rpc('start_game', { p_party_id: route.partyId })
-          }}
-        />
+        <PartyRoom partyId={route.partyId} roomCode={route.roomCode} isHost={route.isHost} />
       )}
     </div>
   )
