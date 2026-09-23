@@ -10,6 +10,12 @@ vi.mock('./lib/supabaseClient', () => ({
       signInWithOtp: vi.fn(),
       verifyOtp: vi.fn(),
     },
+    rpc: vi.fn(() => ({ single: vi.fn().mockResolvedValue({ data: {}, error: null }) })),
+    from: vi.fn(() => ({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({ data: [] }),
+    })),
   },
 }))
 
