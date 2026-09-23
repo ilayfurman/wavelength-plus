@@ -1,5 +1,10 @@
 # Supabase Setup
 
+> **Integration tests:** run `supabase start` and copy the "anon key" and "DB URL"
+> it prints into a local `SUPABASE_LOCAL_ANON_KEY` and `SUPABASE_LOCAL_DB_URL`
+> env var (e.g. in a gitignored `.env.test.local`) before running
+> `npm run test:integration`.
+
 This project is linked to the remote Supabase project `iggpblavznrcbnwaygnv`.
 
 ## One-time machine setup
