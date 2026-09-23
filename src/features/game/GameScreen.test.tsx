@@ -33,6 +33,8 @@ describe('GameScreen', () => {
         myTeamId="team-a"
         teams={[{ id: 'team-a', name: 'Tacos', score: 0 }]}
         isHost={false}
+        myMutedUntil={null}
+        players={[]}
       />
     )
     await waitFor(() => expect(screen.getByText(/cold/i)).toBeInTheDocument())
@@ -50,6 +52,8 @@ describe('GameScreen', () => {
         myTeamId="team-b"
         teams={[{ id: 'team-a', name: 'Tacos', score: 0 }, { id: 'team-b', name: 'Yikes', score: 0 }]}
         isHost={false}
+        myMutedUntil={null}
+        players={[]}
       />
     )
     await waitFor(() => expect(screen.getByText(/waiting for the clue/i)).toBeInTheDocument())

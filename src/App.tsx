@@ -19,6 +19,8 @@ function PartyRoom({ partyId, roomCode, isHost }: { partyId: string; roomCode: s
   const [teams, setTeams] = useState<{ id: string; name: string; score: number }[]>([])
   const [myPlayerId, setMyPlayerId] = useState<string | null>(null)
   const [myTeamId, setMyTeamId] = useState<string | null>(null)
+  const [myMutedUntil, setMyMutedUntil] = useState<string | null>(null)
+  const [players, setPlayers] = useState<{ id: string; display_name: string }[]>([])
 
   async function reloadPartyState() {
     const { data: party } = await supabase.from('parties').select('status').eq('id', partyId).single()
@@ -32,10 +34,18 @@ function PartyRoom({ partyId, roomCode, isHost }: { partyId: string; roomCode: s
       .order('created_at', { ascending: false })
       .limit(1)
     setCurrentTurnId(turnRows?.[0]?.id ?? null)
+    const { data: playerRows } = await supabase.from('players').select('id, display_name, muted_until').eq('party_id', partyId)
+    setPlayers((playerRows ?? []).map((p) => ({ id: p.id, display_name: p.display_name })))
     const userId = (await supabase.auth.getUser()).data.user?.id
-    const { data: me } = await supabase.from('players').select('id, team_id').eq('party_id', partyId).eq('account_id', userId).single()
+    const { data: me } = await supabase
+      .from('players')
+      .select('id, team_id, muted_until')
+      .eq('party_id', partyId)
+      .eq('account_id', userId)
+      .single()
     setMyPlayerId(me?.id ?? null)
     setMyTeamId(me?.team_id ?? null)
+    setMyMutedUntil(me?.muted_until ?? null)
   }
 
   useEffect(() => {
@@ -65,7 +75,17 @@ function PartyRoom({ partyId, roomCode, isHost }: { partyId: string; roomCode: s
     )
   }
   if (status === 'playing' && currentTurnId && myPlayerId && myTeamId) {
-    return <GameScreen turnId={currentTurnId} myPlayerId={myPlayerId} myTeamId={myTeamId} teams={teams} isHost={isHost} />
+    return (
+      <GameScreen
+        turnId={currentTurnId}
+        myPlayerId={myPlayerId}
+        myTeamId={myTeamId}
+        teams={teams}
+        isHost={isHost}
+        myMutedUntil={myMutedUntil}
+        players={players}
+      />
+    )
   }
   if (status === 'finished') {
     return (

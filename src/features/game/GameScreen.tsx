@@ -4,6 +4,7 @@ import { useTurn } from './useTurn'
 import { DialFan } from '../../components/DialFan'
 import { TeamScoreboard } from '../../components/TeamScoreboard'
 import { useDialBroadcast } from './useDialBroadcast'
+import { Soundboard } from '../noises/Soundboard'
 
 type Team = { id: string; name: string; score: number }
 
@@ -13,12 +14,16 @@ export function GameScreen({
   myTeamId,
   teams,
   isHost,
+  myMutedUntil,
+  players,
 }: {
   turnId: string
   myPlayerId: string
   myTeamId: string
   teams: Team[]
   isHost: boolean
+  myMutedUntil: string | null
+  players: { id: string; display_name: string }[]
 }) {
   const turn = useTurn(turnId)
   const [clueText, setClueText] = useState('')
@@ -51,6 +56,7 @@ export function GameScreen({
   return (
     <div>
       <TeamScoreboard teams={teams} activeTeamId={turn.team_id} />
+      <Soundboard partyId={turn.party_id} myPlayerId={myPlayerId} mutedUntil={myMutedUntil} isHost={isHost} players={players} />
       <div>{spectrumLabel}</div>
 
       {turn.status === 'clue' && isPsychic && (
