@@ -3,7 +3,7 @@ import { AuthProvider } from './features/auth/AuthProvider'
 import { useAuth } from './features/auth/useAuth'
 import { SignIn } from './features/auth/SignIn'
 import { Home } from './features/home/Home'
-import { AvatarPicker } from './features/party/AvatarPicker'
+import { NameAvatarStep } from './features/party/NameAvatarStep'
 import { createParty } from './features/party/CreateParty'
 import { joinParty } from './features/party/JoinParty'
 import { Lobby } from './features/party/Lobby'
@@ -109,6 +109,7 @@ function Gate() {
   const [route, setRoute] = useState<Route>({ name: 'home' })
   const [displayName, setDisplayName] = useState('Player')
   const [avatar, setAvatar] = useState('🌮')
+  const [nameAvatarSet, setNameAvatarSet] = useState(false)
 
   useEffect(() => {
     const hash = window.location.hash.match(/^#\/join\/([A-Z]{4})$/i)
@@ -133,14 +134,19 @@ function Gate() {
   return (
     <div data-testid="app-root">
       {route.name === 'home' || route.name === 'join' ? (
-        <div>
-          <label>
-            Name
-            <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-          </label>
-          <AvatarPicker value={avatar} onChange={setAvatar} />
+        !nameAvatarSet ? (
+          <NameAvatarStep
+            initialName={displayName}
+            initialAvatar={avatar}
+            onContinue={(name, chosenAvatar) => {
+              setDisplayName(name)
+              setAvatar(chosenAvatar)
+              setNameAvatarSet(true)
+            }}
+          />
+        ) : (
           <Home onCreate={handleCreate} onJoin={(code) => handleJoin(code)} />
-        </div>
+        )
       ) : (
         <PartyRoom partyId={route.partyId} roomCode={route.roomCode} isHost={route.isHost} />
       )}
