@@ -16,7 +16,7 @@ describe('SignIn', () => {
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'me@example.com' } })
     fireEvent.click(screen.getByRole('button', { name: /send code/i }))
     await waitFor(() => expect(supabase.auth.signInWithOtp).toHaveBeenCalledWith({ email: 'me@example.com' }))
-    expect(await screen.findByLabelText(/6-digit code/i)).toBeInTheDocument()
+    expect(await screen.findByLabelText(/code digit 1/i)).toBeInTheDocument()
   })
 
   it('verifies the entered code', async () => {
@@ -25,7 +25,11 @@ describe('SignIn', () => {
     render(<SignIn />)
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'me@example.com' } })
     fireEvent.click(screen.getByRole('button', { name: /send code/i }))
-    fireEvent.change(await screen.findByLabelText(/6-digit code/i), { target: { value: '123456' } })
+    await screen.findByLabelText(/code digit 1/i)
+    const digits = '123456'.split('')
+    for (let i = 0; i < digits.length; i++) {
+      fireEvent.change(screen.getByLabelText(new RegExp(`code digit ${i + 1}$`, 'i')), { target: { value: digits[i] } })
+    }
     fireEvent.click(screen.getByRole('button', { name: /verify/i }))
     await waitFor(() =>
       expect(supabase.auth.verifyOtp).toHaveBeenCalledWith({ email: 'me@example.com', token: '123456', type: 'email' })
