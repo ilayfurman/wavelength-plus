@@ -10,8 +10,37 @@ import { Lobby } from './features/party/Lobby'
 import { GameScreen } from './features/game/GameScreen'
 import { FinalScoreboard } from './features/game/FinalScoreboard'
 import { supabase } from './lib/supabaseClient'
+import { Starfield } from './components/Starfield'
+import { Logo } from './components/Logo'
 
 type Route = { name: 'home' } | { name: 'join'; roomCode: string } | { name: 'lobby'; partyId: string; roomCode: string; isHost: boolean }
+
+function Splash() {
+  return (
+    <div style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
+      <Starfield />
+      <div
+        style={{
+          position: 'relative',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 20,
+          padding: '32px 20px',
+          boxSizing: 'border-box',
+        }}
+      >
+        <Logo variant="icon" size="lg" />
+        <Logo variant="stacked" size="xl" />
+        <p style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 14, margin: 0 }}>
+          The Guess-the-Dial Party Game
+        </p>
+      </div>
+    </div>
+  )
+}
 
 function PartyRoom({ partyId, roomCode, isHost }: { partyId: string; roomCode: string; isHost: boolean }) {
   const [status, setStatus] = useState<'lobby' | 'playing' | 'finished'>('lobby')
@@ -104,7 +133,7 @@ function PartyRoom({ partyId, roomCode, isHost }: { partyId: string; roomCode: s
       />
     )
   }
-  return <div>Loading…</div>
+  return <Splash />
 }
 
 function Gate() {
@@ -119,7 +148,7 @@ function Gate() {
     if (hash) setRoute({ name: 'join', roomCode: hash[1].toUpperCase() })
   }, [])
 
-  if (loading) return <div data-testid="app-root">Loading…</div>
+  if (loading) return <div data-testid="app-root"><Splash /></div>
   if (!session) return <div data-testid="app-root"><SignIn /></div>
 
   async function handleCreate() {
