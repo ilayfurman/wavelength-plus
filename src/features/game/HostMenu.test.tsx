@@ -109,7 +109,7 @@ describe('HostMenu', () => {
     await waitFor(() => expect(supabase.rpc).toHaveBeenCalledWith('end_game', { p_party_id: 'party-1' }))
   })
 
-  it('toggles noises via set_party_settings, preserving other settings', async () => {
+  it('toggles noises via set_noises_enabled (not set_party_settings, which is lobby-only)', async () => {
     render(
       <HostMenu
         open
@@ -123,14 +123,33 @@ describe('HostMenu', () => {
     const toggle = await screen.findByRole('switch', { name: /toggle noises/i })
     fireEvent.click(toggle)
     await waitFor(() =>
-      expect(supabase.rpc).toHaveBeenCalledWith('set_party_settings', {
+      expect(supabase.rpc).toHaveBeenCalledWith('set_noises_enabled', {
         p_party_id: 'party-1',
-        p_team_size: 2,
-        p_rounds: 3,
-        p_team_mode: 'random',
         p_noises_enabled: false,
       })
     )
+    expect(supabase.rpc).not.toHaveBeenCalledWith('set_party_settings', expect.anything())
+  })
+
+  it('reverts the noises toggle and shows an error when set_noises_enabled fails', async () => {
+    // `toggleNoises` awaits `supabase.rpc(...)` directly (no `.single()`), so returning a
+    // plain `{ error }` object here is enough: `await` on a non-thenable resolves to itself.
+    vi.mocked(supabase.rpc).mockReturnValueOnce({ data: null, error: { message: 'nope' } } as never)
+    render(
+      <HostMenu
+        open
+        onClose={vi.fn()}
+        partyId="party-1"
+        currentPsychicName="Riley"
+        players={players}
+        myPlayerId="host-1"
+      />
+    )
+    const toggle = await screen.findByRole('switch', { name: /toggle noises/i })
+    expect(toggle).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(toggle)
+    await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/could not change noises/i)
   })
 
   it('calls onClose when the close button is tapped', () => {

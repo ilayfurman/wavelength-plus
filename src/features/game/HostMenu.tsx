@@ -60,6 +60,12 @@ const closeButtonStyle: CSSProperties = {
   cursor: 'pointer',
 }
 
+const errorTextStyle: CSSProperties = {
+  color: '#FF8A8A',
+  fontSize: 13,
+  fontWeight: 500,
+}
+
 const sectionStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
@@ -155,10 +161,13 @@ export function HostMenu({
 }) {
   const [settings, setSettings] = useState<PartySettings | null>(null)
   const [confirmEndGame, setConfirmEndGame] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [mutingIds, setMutingIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (!open) {
       setConfirmEndGame(false)
+      setErrorMessage(null)
       return
     }
     let cancelled = false
@@ -180,24 +189,41 @@ export function HostMenu({
 
   async function toggleNoises() {
     if (!settings) return
+    const previous = settings
     const next = !settings.noises_enabled
     setSettings({ ...settings, noises_enabled: next })
-    await supabase.rpc('set_party_settings', {
+    setErrorMessage(null)
+    const { error } = await supabase.rpc('set_noises_enabled', {
       p_party_id: partyId,
-      p_team_size: settings.team_size,
-      p_rounds: settings.rounds,
-      p_team_mode: settings.team_mode,
       p_noises_enabled: next,
     })
+    if (error) {
+      setSettings(previous)
+      setErrorMessage('Could not change noises setting. Try again.')
+    }
   }
 
   async function mutePlayer(playerId: string) {
-    await supabase.rpc('mute_player', { p_party_id: partyId, p_player_id: playerId, p_seconds: 30 })
+    if (mutingIds.has(playerId)) return
+    setMutingIds((prev) => new Set(prev).add(playerId))
+    setErrorMessage(null)
+    const { error } = await supabase.rpc('mute_player', { p_party_id: partyId, p_player_id: playerId, p_seconds: 30 })
+    setMutingIds((prev) => {
+      const next = new Set(prev)
+      next.delete(playerId)
+      return next
+    })
+    if (error) {
+      setErrorMessage('Could not mute that player. Try again.')
+      return
+    }
     onMuteSuccess?.()
   }
 
   async function forceSkipTurn() {
-    await supabase.rpc('skip_turn', { p_party_id: partyId })
+    setErrorMessage(null)
+    const { error } = await supabase.rpc('skip_turn', { p_party_id: partyId })
+    if (error) setErrorMessage('Could not skip the turn. Try again.')
   }
 
   async function endGame() {
@@ -205,7 +231,12 @@ export function HostMenu({
       setConfirmEndGame(true)
       return
     }
-    await supabase.rpc('end_game', { p_party_id: partyId })
+    setErrorMessage(null)
+    const { error } = await supabase.rpc('end_game', { p_party_id: partyId })
+    if (error) {
+      setErrorMessage('Could not end the game. Try again.')
+      return
+    }
     setConfirmEndGame(false)
   }
 
@@ -218,6 +249,8 @@ export function HostMenu({
             ✕
           </button>
         </div>
+
+        {errorMessage && <span role="alert" style={errorTextStyle}>{errorMessage}</span>}
 
         <div style={sectionStyle}>
           <div style={rowStyle}>
@@ -249,6 +282,7 @@ export function HostMenu({
                     style={muteButtonStyle}
                     aria-label={`Mute ${p.display_name}`}
                     onClick={() => mutePlayer(p.id)}
+                    disabled={mutingIds.has(p.id)}
                   >
                     Mute
                   </button>
