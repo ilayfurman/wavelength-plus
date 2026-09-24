@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
+<div style="position:absolute;inset:0;background:radial-gradient(120% 55% at 50% 58%, #2C2266 0%, #16123A 46%, #09081A 100%)"></div>
+<div style="position:absolute;inset:0;opacity:.75;background-image:radial-gradient(1.3px 1.3px at 12px 18px,#fff 50%,transparent 51%),radial-gradient(1px 1px at 64px 82px,rgba(255,255,255,.85) 50%,transparent 51%),radial-gradient(1px 1px at 101px 34px,rgba(200,190,255,.9) 50%,transparent 51%),radial-gradient(1.5px 1.5px at 143px 122px,rgba(255,255,255,.7) 50%,transparent 51%),radial-gradient(1px 1px at 31px 151px,rgba(255,255,255,.6) 50%,transparent 51%);background-size:170px 170px"></div>
+<div style="position:absolute;inset:0;opacity:.45;background-image:radial-gradient(1px 1px at 44px 12px,#fff 50%,transparent 51%),radial-gradient(1.2px 1.2px at 190px 70px,rgba(215,205,255,.9) 50%,transparent 51%),radial-gradient(1px 1px at 120px 200px,#fff 50%,transparent 51%),radial-gradient(1.8px 1.8px at 210px 160px,rgba(255,255,255,.5) 50%,transparent 51%);background-size:236px 236px;background-position:40px 60px"></div>
+<sc-if value="{{ chrome }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:0;right:0;top:0;height:50px;padding:0 30px 7px 34px;box-sizing:border-box;display:flex;align-items:flex-end;justify-content:space-between;color:#fff;font:600 16px/1 Rubik,system-ui,sans-serif">
+<span>9:41</span>
+<div style="display:flex;align-items:center;gap:6px">
+<div style="display:flex;align-items:flex-end;gap:2px;height:12px"><div style="width:3px;height:4px;background:#fff;border-radius:1px"></div><div style="width:3px;height:6px;background:#fff;border-radius:1px"></div><div style="width:3px;height:9px;background:#fff;border-radius:1px"></div><div style="width:3px;height:12px;background:#fff;border-radius:1px"></div></div>
+<div style="width:24px;height:12px;border:1.5px solid rgba(255,255,255,.55);border-radius:4px;padding:1.5px;box-sizing:border-box"><div style="width:80%;height:100%;background:#fff;border-radius:1.5px"></div></div>
+</div>
+</div>
+<div style="position:absolute;left:50%;bottom:8px;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:rgba(255,255,255,.8)"></div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:300},&quot;chrome&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals() { return { chrome: !!this.props.chrome }; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<sc-if value="{{ isPrimary }}" hint-placeholder-val="{{ true }}"><button onClick="{{ onClick }}" style="width:100%;height:{{ h }}px;padding:0 20px;border-radius:999px;border:none;background:linear-gradient(180deg,#FFE08A 0%,#FFC94D 55%,#F2A93B 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 10px 28px rgba(255,190,70,.35);color:#1A1233;font:700 {{ fs }}px Rubik,system-ui,sans-serif;white-space:nowrap;cursor:pointer;opacity:{{ op }};box-sizing:border-box" style-active="transform:scale(.97)">{{ label }}</button></sc-if>
+<sc-if value="{{ isSecondary }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onClick }}" style="width:100%;height:{{ h }}px;padding:0 20px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(200,180,255,.18);color:#F4F2FB;font:600 {{ fs }}px Rubik,system-ui,sans-serif;white-space:nowrap;cursor:pointer;opacity:{{ op }};box-sizing:border-box" style-active="transform:scale(.97)">{{ label }}</button></sc-if>
+<sc-if value="{{ isAccent }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onClick }}" style="width:100%;height:{{ h }}px;padding:0 20px;border-radius:999px;background:rgba(169,139,255,.16);border:1px solid rgba(169,139,255,.5);color:#CFC0FF;font:600 {{ fs }}px Rubik,system-ui,sans-serif;white-space:nowrap;cursor:pointer;opacity:{{ op }};box-sizing:border-box" style-active="transform:scale(.97)">{{ label }}</button></sc-if>
+<sc-if value="{{ isGhost }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onClick }}" style="width:100%;height:{{ h }}px;padding:0 20px;border-radius:999px;background:transparent;border:none;color:#A9A3C9;font:500 {{ fs }}px Rubik,system-ui,sans-serif;white-space:nowrap;cursor:pointer;opacity:{{ op }};box-sizing:border-box">{{ label }}</button></sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:320,&quot;height&quot;:70},&quot;label&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Create party&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;kind&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;primary&quot;,&quot;secondary&quot;,&quot;accent&quot;,&quot;ghost&quot;],&quot;default&quot;:&quot;primary&quot;,&quot;tsType&quot;:&quot;'primary' | 'secondary' | 'accent' | 'ghost'&quot;},&quot;size&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;lg&quot;,&quot;md&quot;,&quot;sm&quot;],&quot;default&quot;:&quot;lg&quot;,&quot;tsType&quot;:&quot;'lg' | 'md' | 'sm'&quot;},&quot;disabled&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;onClick&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const k = this.props.kind ?? 'primary', s = this.props.size ?? 'lg';
+    const [h, fs] = { lg: [62, 21], md: [54, 17], sm: [44, 15] }[s] || [62, 21];
+    return { isPrimary: k === 'primary', isSecondary: k === 'secondary', isAccent: k === 'accent', isGhost: k === 'ghost',
+      h, fs, label: this.props.label ?? 'Button', op: this.props.disabled ? 0.4 : 1, onClick: this.props.disabled ? undefined : this.props.onClick };
+  }
+}
+</script>
+</body>
+</html>

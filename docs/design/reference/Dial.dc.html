@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="position:relative;width:100%">
+<svg ref="{{ svgRef }}" viewBox="0 0 360 250" style="width:100%;height:auto;display:block;touch-action:none;overflow:visible;filter:drop-shadow(0 0 28px rgba(140,110,255,.4));cursor:{{ cursor }}" onPointerDown="{{ down }}" onPointerMove="{{ move }}" onPointerUp="{{ up }}">
+<defs>
+<linearGradient id="rg{{ uid }}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2E2266"></stop><stop offset="1" stop-color="#15103A"></stop></linearGradient>
+<radialGradient id="nd{{ uid }}" cx="40%" cy="38%" r="60%"><stop offset="0" stop-color="#FFFFFF"></stop><stop offset=".45" stop-color="#FFE9A8"></stop><stop offset="1" stop-color="#F2A93B"></stop></radialGradient>
+<radialGradient id="pl{{ uid }}" cx="38%" cy="30%" r="75%"><stop offset="0" stop-color="#FFFFFF"></stop><stop offset=".5" stop-color="#D9D3F2"></stop><stop offset="1" stop-color="#7E73B8"></stop></radialGradient>
+</defs>
+<path d="M36 178 A144 144 0 0 1 324 178" fill="none" stroke="rgba(170,150,255,.12)" stroke-width="1" stroke-dasharray="2 5"></path>
+<path d="M30 178 A150 150 0 0 1 330 178 L278 178 A98 98 0 0 0 82 178 Z" fill="url(#rg{{ uid }})" stroke="rgba(190,170,255,.4)" stroke-width="1.5"></path>
+<path d="{{ ringDots }}" stroke="rgba(230,220,255,.45)" stroke-width="2.6" stroke-linecap="round"></path>
+<path d="M92 178 A88 88 0 0 1 268 178" fill="none" stroke="rgba(170,150,255,.18)" stroke-width="1" stroke-dasharray="1 6" stroke-linecap="round"></path>
+<sc-if value="{{ showBands }}" hint-placeholder-val="{{ false }}">
+<path d="{{ r1 }}" fill="#8C6BFF"></path>
+<path d="{{ r2 }}" fill="#FF6FA3"></path>
+<path d="{{ r3 }}" fill="#FFD166"></path>
+<path d="{{ r4 }}" fill="#FF6FA3"></path>
+<path d="{{ r5 }}" fill="#8C6BFF"></path>
+<text x="{{ o1.x }}" y="{{ o1.y }}" transform="{{ o1.tf }}" opacity="{{ o1.op }}" text-anchor="middle" dominant-baseline="middle" style="font:700 16px Rubik,sans-serif" fill="#1A1233">2</text>
+<text x="{{ o2.x }}" y="{{ o2.y }}" transform="{{ o2.tf }}" opacity="{{ o2.op }}" text-anchor="middle" dominant-baseline="middle" style="font:700 16px Rubik,sans-serif" fill="#1A1233">3</text>
+<text x="{{ o3.x }}" y="{{ o3.y }}" transform="{{ o3.tf }}" opacity="{{ o3.op }}" text-anchor="middle" dominant-baseline="middle" style="font:700 16px Rubik,sans-serif" fill="#1A1233">4</text>
+<text x="{{ o4.x }}" y="{{ o4.y }}" transform="{{ o4.tf }}" opacity="{{ o4.op }}" text-anchor="middle" dominant-baseline="middle" style="font:700 16px Rubik,sans-serif" fill="#1A1233">3</text>
+<text x="{{ o5.x }}" y="{{ o5.y }}" transform="{{ o5.tf }}" opacity="{{ o5.op }}" text-anchor="middle" dominant-baseline="middle" style="font:700 16px Rubik,sans-serif" fill="#1A1233">2</text>
+</sc-if>
+<polygon points="{{ needle }}" fill="#FFD166" opacity=".25" transform="translate(0 3)"></polygon>
+<polygon points="{{ needle }}" fill="url(#nd{{ uid }})" stroke="#FFF4D6" stroke-width="1" stroke-linejoin="round"></polygon>
+<path d="M148 181 A32 32 0 0 1 212 181 Z" fill="url(#pl{{ uid }})"></path>
+<ellipse cx="172" cy="162" rx="10" ry="5" fill="#fff" opacity=".6" transform="rotate(-20 172 162)"></ellipse>
+</svg>
+<sc-if value="{{ hasLabels }}" hint-placeholder-val="{{ true }}">
+<div style="position:absolute;left:15.5%;bottom:5%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;color:#F4F2FB;font:600 17px/1 Rubik,sans-serif;pointer-events:none;white-space:nowrap"><span style="font:400 22px/1 Rubik,sans-serif">⟵</span><span>{{ left }}</span></div>
+<div style="position:absolute;left:84.5%;bottom:5%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;color:#F4F2FB;font:600 17px/1 Rubik,sans-serif;pointer-events:none;white-space:nowrap"><span style="font:400 22px/1 Rubik,sans-serif">⟶</span><span>{{ right }}</span></div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:360,&quot;height&quot;:260},&quot;value&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:1,&quot;step&quot;:0.01,&quot;default&quot;:0.5,&quot;tsType&quot;:&quot;number&quot;},&quot;target&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:1,&quot;step&quot;:0.01,&quot;default&quot;:0.66,&quot;tsType&quot;:&quot;number&quot;},&quot;showBands&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;interactive&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;labels&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;left&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Hot&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;right&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Cold&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;onChange&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(v: number) =&gt; void&quot;}}">
+class Component extends DCLogic {
+  state = { v: null };
+  uid = 'd' + Math.random().toString(36).slice(2, 8);
+  svgRef = React.createRef();
+  componentDidUpdate(pp) { if (pp.value !== this.props.value && this.state.v !== null) this.setState({ v: null }); }
+  setFrom(e) {
+    const r = this.svgRef.current.getBoundingClientRect();
+    const x = (e.clientX - r.left) * 360 / r.width, y = (e.clientY - r.top) * 250 / r.height;
+    let a = Math.atan2(178 - y, x - 180);
+    if (a < 0) a = x < 180 ? Math.PI : 0;
+    const v = Math.round((1 - a / Math.PI) * 100) / 100;
+    this.setState({ v }); this.props.onChange?.(v);
+  }
+  renderVals() {
+    const p = this.props, inter = !!p.interactive;
+    const v = this.state.v ?? Number(p.value ?? 0.5), t = Number(p.target ?? 0.66);
+    const CY = 178, Ro = 150, Ri = 98, Rm = 124, cl = x => Math.max(0, Math.min(1, x));
+    const P = (v, r) => { const a = Math.PI * (1 - v); return [180 + r * Math.cos(a), CY - r * Math.sin(a)]; };
+    const f = q => `${q[0].toFixed(1)} ${q[1].toFixed(1)}`;
+    const band = (a, b) => { a = cl(a); b = cl(b); if (b - a < 0.001) return ''; return `M${f(P(a, Ro))} A${Ro} ${Ro} 0 0 1 ${f(P(b, Ro))} L${f(P(b, Ri))} A${Ri} ${Ri} 0 0 0 ${f(P(a, Ri))} Z`; };
+    const lbl = m => { const q = P(m, Rm); return { x: q[0].toFixed(1), y: q[1].toFixed(1), tf: `rotate(${((m - 0.5) * 180).toFixed(1)} ${q[0].toFixed(1)} ${q[1].toFixed(1)})`, op: m > 0.02 && m < 0.98 ? 1 : 0 }; };
+    let ringDots = '';
+    for (let i = 1; i < 20; i++) ringDots += `M${f(P(i / 20, Ro - 7))} l0 0 `;
+    const a = Math.PI * (1 - v), tip = P(v, Ro + 2), qx = Math.sin(a) * 6, qy = Math.cos(a) * 6;
+    return {
+      uid: this.uid, svgRef: this.svgRef, ringDots,
+      showBands: !!p.showBands, hasLabels: p.labels ?? true,
+      left: p.left ?? 'Hot', right: p.right ?? 'Cold',
+      cursor: inter ? 'grab' : 'default',
+      r1: band(t - .15, t - .10), r2: band(t - .10, t - .05), r3: band(t - .05, t + .05), r4: band(t + .05, t + .10), r5: band(t + .10, t + .15),
+      o1: lbl(t - .125), o2: lbl(t - .075), o3: lbl(t), o4: lbl(t + .075), o5: lbl(t + .125),
+      needle: `${tip[0].toFixed(1)},${tip[1].toFixed(1)} ${(180 + qx).toFixed(1)},${(CY + qy).toFixed(1)} ${(180 - qx).toFixed(1)},${(CY - qy).toFixed(1)}`,
+      down: e => { if (!inter) return; e.currentTarget.setPointerCapture(e.pointerId); this.drag = true; this.setFrom(e); },
+      move: e => { if (inter && this.drag) this.setFrom(e); },
+      up: () => { this.drag = false; }
+    };
+  }
+}
+</script>
+</body>
+</html>

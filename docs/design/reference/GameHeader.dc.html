@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex;align-items:center;gap:10px;font-family:Rubik,system-ui,sans-serif;color:#F4F2FB">
+<dc-import name="Logo" variant="inline" size="{{ logoSize }}" hint-size="130px,28px"></dc-import>
+<div style="flex:1"></div>
+<span style="font:500 {{ fs }}px/1 Rubik,sans-serif;white-space:nowrap">Round {{ round }}/{{ total }}</span>
+<div style="display:flex;gap:4px">
+<sc-for list="{{ dots }}" as="d" hint-placeholder-count="5"><div style="width:{{ dot }}px;height:{{ dot }}px;border-radius:50%;background:{{ d.c }}"></div></sc-for>
+</div>
+<sc-if value="{{ hasRoom }}" hint-placeholder-val="{{ false }}"><span style="height:40px;display:flex;align-items:center;padding:0 16px;margin-left:10px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(200,180,255,.16);font:600 14px Rubik,sans-serif;white-space:nowrap">Join at retsef.app · <span style="font-family:ui-monospace,Menlo,monospace;letter-spacing:.14em;margin-left:6px;color:#FFD166">{{ room }}</span></span></sc-if>
+<button onClick="{{ onMenu }}" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.06);border:1px solid rgba(200,180,255,.16);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;padding:0;flex:none">
+<span style="width:16px;height:2px;border-radius:1px;background:#F4F2FB"></span><span style="width:16px;height:2px;border-radius:1px;background:#F4F2FB"></span><span style="width:16px;height:2px;border-radius:1px;background:#F4F2FB"></span>
+</button>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:358,&quot;height&quot;:44},&quot;round&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:3,&quot;tsType&quot;:&quot;number&quot;},&quot;total&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:5,&quot;tsType&quot;:&quot;number&quot;},&quot;room&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;onMenu&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const r = this.props.round ?? 3, t = this.props.total ?? 5, wide = !!this.props.room;
+    return { round: r, total: t, onMenu: this.props.onMenu, room: this.props.room ?? '', hasRoom: wide,
+      logoSize: wide ? 'md' : 'sm', fs: wide ? 15 : 12, dot: wide ? 10 : 8,
+      dots: Array.from({ length: t }, (_, i) => ({ c: i < r ? '#FFD166' : 'rgba(255,255,255,.18)' })) };
+  }
+}
+</script>
+</body>
+</html>

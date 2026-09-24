@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="border-radius:26px;padding:22px 20px;background:{{ bg }};border:1.5px solid {{ border }};box-shadow:{{ shadow }};opacity:{{ op }};display:flex;flex-direction:column;gap:16px;box-sizing:border-box;font-family:Rubik,system-ui,sans-serif;color:#F4F2FB">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="font:700 22px Rubik,sans-serif">{{ name }}</span><span style="font:600 11px Rubik,sans-serif;letter-spacing:.12em;color:{{ soft }};white-space:nowrap">{{ status }}</span></div>
+<span style="font:700 80px/1 Fredoka,Rubik,sans-serif;color:{{ color }}">{{ score }}</span>
+<sc-for list="{{ players }}" as="p" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:12px"><span style="width:44px;height:44px;border-radius:50%;background:{{ p.bg }};display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:{{ p.ring }}">{{ p.e }}</span><span style="flex:1;font:600 17px Rubik,sans-serif">{{ p.n }}</span><span style="font:600 10px Rubik,sans-serif;color:#FFD166;letter-spacing:.1em">{{ p.tag }}</span></div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:280,&quot;height&quot;:340},&quot;team&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;comets&quot;,&quot;novas&quot;],&quot;default&quot;:&quot;comets&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;score&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:7,&quot;tsType&quot;:&quot;number&quot;},&quot;status&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;GUESSING&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;active&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;psychic&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Alex&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props, novas = p.team === 'novas', active = !!p.active, psychic = p.psychic ?? '';
+    const pl = novas ? [{ n: 'Casey', e: '🐸', bg: '#5CC8F0' }, { n: 'Morgan', e: '🦄', bg: '#B889E8' }, { n: 'Riley', e: '🍩', bg: '#F59BC0' }]
+      : [{ n: 'Alex', e: '🦊', bg: '#F4A259' }, { n: 'Jordan', e: '🐙', bg: '#F6D060' }, { n: 'Taylor', e: '🌮', bg: '#7ED3A4' }];
+    const color = novas ? '#5BD6FF' : '#FF6FA3', rgb = novas ? '91,214,255' : '255,111,163';
+    return {
+      name: novas ? 'Novas' : 'Comets', color, score: p.score ?? (novas ? 5 : 7), status: p.status ?? '', soft: novas ? '#BDEBFF' : '#FFC2D8',
+      bg: active ? `linear-gradient(180deg,rgba(${rgb},.22),rgba(${rgb},.05))` : 'linear-gradient(180deg,rgba(52,40,110,.5),rgba(24,18,56,.55))',
+      border: active ? `rgba(${rgb},.6)` : `rgba(${rgb},.3)`, shadow: active ? `0 0 36px rgba(${rgb},.2)` : 'none', op: active || p.dim === false ? 1 : 0.85,
+      players: pl.map(x => ({ ...x, ring: x.n === psychic ? '0 0 0 2px #1A1440, 0 0 0 4px #FFD166' : 'none', tag: x.n === psychic ? 'PSYCHIC' : '' }))
+    };
+  }
+}
+</script>
+</body>
+</html>

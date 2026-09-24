@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<sc-if value="{{ isInline }}" hint-placeholder-val="{{ true }}"><div style="display:inline-flex;align-items:baseline;gap:6px;white-space:nowrap"><span style="font:600 {{ p }}px/1 Fredoka,Rubik,sans-serif;color:#CFC0FF">on the</span><span style="font:700 {{ w }}px/1 Fredoka,Rubik,sans-serif;letter-spacing:-.01em;background:linear-gradient(90deg,#FFD166,#FF8FB1 55%,#A98BFF);-webkit-background-clip:text;background-clip:text;color:transparent">retsef</span></div></sc-if>
+<sc-if value="{{ isStacked }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;align-items:{{ align }};gap:2px;white-space:nowrap"><span style="font:600 {{ p }}px/1 Fredoka,Rubik,sans-serif;color:#CFC0FF;padding:0 4px">on the</span><span style="font:700 {{ w }}px/.95 Fredoka,Rubik,sans-serif;letter-spacing:-.02em;background:linear-gradient(90deg,#FFD166,#FF8FB1 55%,#A98BFF);-webkit-background-clip:text;background-clip:text;color:transparent">retsef</span></div></sc-if>
+<sc-if value="{{ isIcon }}" hint-placeholder-val="{{ false }}"><div style="width:{{ icon }}px;height:{{ icon }}px;border-radius:{{ rad }}px;background:radial-gradient(100% 100% at 50% 20%,#3A2D80,#15103A);border:1px solid rgba(200,180,255,.25);box-shadow:{{ shadow }};display:flex;align-items:center;justify-content:center;box-sizing:border-box"><div style="width:{{ inner }}px;margin-top:{{ mt }}px"><dc-import name="Dial" value="{{ 0.62 }}" target="{{ 0.62 }}" show-bands="{{ true }}" labels="{{ false }}" hint-size="100%,40px"></dc-import></div></div></sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:300,&quot;height&quot;:180},&quot;variant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;inline&quot;,&quot;stacked&quot;,&quot;icon&quot;],&quot;default&quot;:&quot;inline&quot;,&quot;tsType&quot;:&quot;'inline' | 'stacked' | 'icon'&quot;},&quot;size&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;sm&quot;,&quot;md&quot;,&quot;lg&quot;,&quot;xl&quot;],&quot;default&quot;:&quot;md&quot;,&quot;tsType&quot;:&quot;'sm' | 'md' | 'lg' | 'xl'&quot;},&quot;align&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;center&quot;,&quot;flex-start&quot;],&quot;default&quot;:&quot;center&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const v = this.props.variant ?? 'inline', s = this.props.size ?? 'md';
+    const M = { sm: [26, 13, 40], md: [40, 17, 64], lg: [64, 20, 112], xl: [84, 24, 160] }[s] || [40, 17, 64];
+    const icon = M[2];
+    return {
+      isInline: v === 'inline', isStacked: v === 'stacked', isIcon: v === 'icon',
+      w: M[0], p: M[1], align: this.props.align ?? 'center',
+      icon, rad: Math.round(icon * 0.25), inner: Math.round(icon * 0.85), mt: Math.round(icon * 0.11),
+      shadow: icon >= 100 ? '0 0 60px rgba(140,110,255,.35), 0 14px 34px rgba(0,0,0,.45)' : '0 6px 16px rgba(0,0,0,.35)'
+    };
+  }
+}
+</script>
+</body>
+</html>

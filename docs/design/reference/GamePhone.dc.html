@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="position:relative;width:390px;height:844px;overflow:hidden;border-radius:40px;background:#09081A;color:#F4F2FB;font-family:Rubik,system-ui,sans-serif">
+<dc-import name="Starfield" chrome="{{ true }}" hint-size="100%,100%" style="position:absolute;inset:0"></dc-import>
+<div style="position:relative;height:100%;box-sizing:border-box;padding:58px 16px 30px;display:flex;flex-direction:column;gap:12px">
+<dc-import name="GameHeader" round="{{ 3 }}" total="{{ 5 }}" hint-size="100%,40px"></dc-import>
+<dc-import name="ClueCard" label="{{ c.label }}" clue="{{ c.clue }}" tone="{{ c.tone }}" editable="{{ c.editable }}" hint-size="100%,82px"></dc-import>
+<dc-import name="Scoreboard" comets="{{ c.comets }}" novas="{{ c.novas }}" active="{{ c.active }}" psychic="{{ c.psychic }}" hint-size="100%,104px"></dc-import>
+<div style="flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:6px">
+<dc-import name="Dial" value="{{ c.dial }}" target="{{ 0.66 }}" show-bands="{{ c.bands }}" interactive="{{ c.interactive }}" hint-size="100%,248px"></dc-import>
+<sc-if value="{{ hasHint }}" hint-placeholder-val="{{ false }}"><span style="text-align:center;font:400 13px Rubik,sans-serif;color:#A9A3C9">{{ c.hint }}</span></sc-if>
+</div>
+<sc-if value="{{ aClue }}" hint-placeholder-val="{{ false }}"><div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:10px"><dc-import name="Btn" label="Said it out loud" kind="secondary" size="md" hint-size="100%,54px"></dc-import><dc-import name="Btn" label="Send clue" kind="primary" size="md" hint-size="100%,54px"></dc-import></div></sc-if>
+<sc-if value="{{ aNote }}" hint-placeholder-val="{{ false }}"><div style="height:58px;border-radius:999px;border:1px dashed rgba(200,180,255,.25);display:flex;align-items:center;justify-content:center;font:500 15px Rubik,sans-serif;color:#A9A3C9">{{ c.note }}</div></sc-if>
+<sc-if value="{{ aGuess }}" hint-placeholder-val="{{ false }}"><dc-import name="Btn" label="Lock it in" kind="primary" size="lg" hint-size="100%,62px"></dc-import></sc-if>
+<sc-if value="{{ aBet }}" hint-placeholder-val="{{ false }}">
+<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">
+<button onClick="{{ betLeft }}" style="height:62px;border-radius:999px;border:{{ bL.border }};background:{{ bL.bg }};color:{{ bL.color }};box-shadow:{{ bL.shadow }};display:flex;align-items:center;justify-content:center;gap:10px;font:700 19px Rubik,sans-serif;cursor:pointer;transition:all .15s">⟵ Left<span style="display:flex"><sc-for list="{{ bL.who }}" as="w" hint-placeholder-count="1"><span style="width:24px;height:24px;border-radius:50%;background:{{ w.bg }};border:2px solid #120F2E;margin-left:-6px;font-size:13px;display:flex;align-items:center;justify-content:center">{{ w.e }}</span></sc-for></span></button>
+<button onClick="{{ betRight }}" style="height:62px;border-radius:999px;border:{{ bR.border }};background:{{ bR.bg }};color:{{ bR.color }};box-shadow:{{ bR.shadow }};display:flex;align-items:center;justify-content:center;gap:10px;font:700 19px Rubik,sans-serif;cursor:pointer;transition:all .15s"><span style="display:flex"><sc-for list="{{ bR.who }}" as="w" hint-placeholder-count="2"><span style="width:24px;height:24px;border-radius:50%;background:{{ w.bg }};border:2px solid #120F2E;margin-left:-6px;font-size:13px;display:flex;align-items:center;justify-content:center">{{ w.e }}</span></sc-for></span>Right ⟶</button>
+</div>
+<dc-import name="Btn" label="Lock bet for Novas" kind="primary" size="md" hint-size="100%,54px"></dc-import>
+</sc-if>
+<sc-if value="{{ aBetWait }}" hint-placeholder-val="{{ false }}"><div style="height:62px;border-radius:999px;background:rgba(91,214,255,.1);border:1px solid rgba(91,214,255,.4);display:flex;align-items:center;justify-content:space-between;padding:0 10px 0 22px"><span style="font:600 16px Rubik,sans-serif">Novas are betting… <span style="color:#BDEBFF;font-weight:500">2 of 3</span></span><div style="display:flex"><span style="width:40px;height:40px;border-radius:50%;background:#5CC8F0;display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid #FFD166">🐸</span><span style="width:40px;height:40px;border-radius:50%;background:#B889E8;display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid #FFD166;margin-left:-8px">🦄</span><span style="width:40px;height:40px;border-radius:50%;background:#F59BC0;display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid #1A1440;margin-left:-8px;opacity:.45">🍩</span></div></div></sc-if>
+<sc-if value="{{ aReveal }}" hint-placeholder-val="{{ false }}">
+<div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:10px">
+<div style="height:62px;border-radius:999px;background:rgba(255,111,163,.14);border:1.5px solid rgba(255,111,163,.55);display:flex;align-items:center;justify-content:center;gap:10px"><span style="font:700 30px/1 Fredoka,Rubik,sans-serif;color:#FF6FA3">+3</span><span style="font:600 14px/1.15 Rubik,sans-serif">Comets<br><span style="color:#FFC2D8;font-weight:400">So close!</span></span></div>
+<div style="height:62px;border-radius:999px;background:rgba(91,214,255,.12);border:1.5px solid rgba(91,214,255,.5);display:flex;align-items:center;justify-content:center;gap:10px"><span style="font:700 30px/1 Fredoka,Rubik,sans-serif;color:#5BD6FF">+1</span><span style="font:600 14px/1.15 Rubik,sans-serif">Novas<br><span style="color:#BDEBFF;font-weight:400">Right ✓</span></span></div>
+</div>
+<dc-import name="Btn" label="Next turn" kind="primary" size="md" hint-size="100%,54px"></dc-import>
+</sc-if>
+<dc-import name="Soundboard" hint-size="100%,64px"></dc-import>
+</div>
+<sc-if value="{{ isMenu }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:rgba(5,4,14,.65)"></div>
+<div style="position:absolute;left:0;right:0;bottom:0;border-radius:30px 30px 0 0;background:linear-gradient(180deg,#221B4F,#130F30);border-top:1px solid rgba(200,180,255,.2);padding:10px 18px 34px;display:flex;flex-direction:column;gap:6px">
+<div style="width:40px;height:5px;border-radius:3px;background:rgba(255,255,255,.25);align-self:center;margin-bottom:8px"></div>
+<div style="display:flex;align-items:center;justify-content:space-between"><span style="font:700 20px Rubik,sans-serif">Noises</span><button onClick="{{ toggleNoise }}" style="width:52px;height:32px;border-radius:999px;border:none;padding:3px;background:{{ noiseTrack }};display:flex;justify-content:{{ noiseJustify }};cursor:pointer;transition:all .2s"><span style="width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3)"></span></button></div>
+<p style="margin:0 0 6px;font:400 13px Rubik,sans-serif;color:#A9A3C9">Tap to silence someone's soundboard for 30s.</p>
+<sc-for list="{{ muteList }}" as="m" hint-placeholder-count="5">
+<div style="display:flex;align-items:center;gap:12px;height:54px;border-top:1px solid rgba(200,180,255,.08)">
+<span style="width:38px;height:38px;border-radius:50%;background:{{ m.bg }};display:flex;align-items:center;justify-content:center;font-size:20px">{{ m.e }}</span>
+<span style="flex:1;font:500 16px Rubik,sans-serif">{{ m.n }}</span>
+<span style="font:500 13px Rubik,sans-serif;color:#FF8FB8">{{ m.status }}</span>
+<button onClick="{{ m.tap }}" style="height:40px;min-width:96px;padding:0 16px;border-radius:999px;background:{{ m.btnBg }};border:1px solid {{ m.btnBorder }};color:#F4F2FB;font:600 14px Rubik,sans-serif;cursor:pointer">{{ m.label }}</button>
+</div>
+</sc-for>
+<div style="display:flex;align-items:center;height:54px;border-top:1px solid rgba(200,180,255,.08)"><span style="flex:1;font:500 16px Rubik,sans-serif;color:#FF8FB8">Force-skip Alex's turn</span><span style="font:500 20px Rubik,sans-serif;color:#A9A3C9">›</span></div>
+<div style="display:flex;align-items:center;height:54px;border-top:1px solid rgba(200,180,255,.08)"><span style="flex:1;font:500 16px Rubik,sans-serif;color:#F4F2FB">End game for everyone</span><span style="font:500 20px Rubik,sans-serif;color:#A9A3C9">›</span></div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844},&quot;state&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;clue&quot;,&quot;waitClue&quot;,&quot;guess&quot;,&quot;watch&quot;,&quot;bet&quot;,&quot;betWait&quot;,&quot;reveal&quot;,&quot;hostMenu&quot;],&quot;default&quot;:&quot;guess&quot;,&quot;tsType&quot;:&quot;'clue' | 'waitClue' | 'guess' | 'watch' | 'bet' | 'betWait' | 'reveal' | 'hostMenu'&quot;}}">
+class Component extends DCLogic {
+  state = { bet: 'right', noise: true, muted: { Riley: true } };
+  renderVals() {
+    const s = this.state, set = o => this.setState(o), st = this.props.state ?? 'guess';
+    const base = { label: "ALEX'S CLUE", clue: 'Coffee', tone: 'default', editable: false, active: 'comets', psychic: 'Alex', comets: 7, novas: 5, dial: 0.5, bands: false, interactive: false, hint: '', note: '', act: '' };
+    const S = {
+      clue: { label: 'ONLY YOU SEE THE TARGET', clue: '', tone: 'gold', editable: true, bands: true, act: 'clue' },
+      waitClue: { label: "COMETS' TURN", clue: 'Alex is thinking…', act: 'note', note: "Next: you'll bet left or right" },
+      guess: { dial: 0.42, interactive: true, hint: 'Drag the needle · Taylor sees it move live', act: 'guess' },
+      watch: { label: 'COMETS ARE GUESSING', tone: 'live', dial: 0.61, act: 'note', note: 'Get ready to bet left or right' },
+      bet: { label: 'LEFT OR RIGHT OF THEIR GUESS?', tone: 'nova', active: 'novas', dial: 0.58, act: 'bet' },
+      betWait: { label: "GUESS LOCKED · ALEX'S CLUE", active: 'novas', dial: 0.58, act: 'betWait' },
+      reveal: { label: 'REVEALED', tone: 'gold', active: 'none', psychic: '', comets: 10, novas: 6, dial: 0.58, bands: true, act: 'reveal' },
+      hostMenu: { dial: 0.42, act: 'guess' }
+    };
+    const c = { ...base, ...(S[st] || S.guess) };
+    const on = { border: '2px solid #FFD166', bg: 'rgba(255,209,102,.18)', color: '#fff', shadow: '0 0 22px rgba(255,209,102,.4)' };
+    const off = { border: '1px solid rgba(200,180,255,.18)', bg: 'rgba(255,255,255,.07)', color: '#D3CEEA', shadow: 'none' };
+    const casey = { e: '🐸', bg: '#5CC8F0' }, morgan = { e: '🦄', bg: '#B889E8' }, riley = { e: '🍩', bg: '#F59BC0' };
+    const rows = [['🐙', 'Jordan', '#F6D060'], ['🌮', 'Taylor', '#7ED3A4'], ['🐸', 'Casey', '#5CC8F0'], ['🦄', 'Morgan', '#B889E8'], ['🍩', 'Riley', '#F59BC0']];
+    return {
+      c, hasHint: !!c.hint, isMenu: st === 'hostMenu',
+      aClue: c.act === 'clue', aNote: c.act === 'note', aGuess: c.act === 'guess', aBet: c.act === 'bet', aBetWait: c.act === 'betWait', aReveal: c.act === 'reveal',
+      betLeft: () => set({ bet: 'left' }), betRight: () => set({ bet: 'right' }),
+      bL: { ...(s.bet === 'left' ? on : off), who: s.bet === 'left' ? [casey, riley] : [riley] },
+      bR: { ...(s.bet === 'right' ? on : off), who: s.bet === 'right' ? [casey, morgan] : [morgan] },
+      toggleNoise: () => set({ noise: !s.noise }), noiseTrack: s.noise ? '#FFC94D' : 'rgba(255,255,255,.18)', noiseJustify: s.noise ? 'flex-end' : 'flex-start',
+      muteList: rows.map(([e, n, bg]) => { const m = !!s.muted[n]; return { e, n, bg, status: m ? '0:21' : '', label: m ? 'Unmute' : 'Mute 30s',
+        btnBg: m ? 'rgba(255,111,163,.18)' : 'rgba(255,255,255,.07)', btnBorder: m ? 'rgba(255,111,163,.5)' : 'rgba(200,180,255,.18)', tap: () => set({ muted: { ...s.muted, [n]: !m } }) }; })
+    };
+  }
+}
+</script>
+</body>
+</html>
