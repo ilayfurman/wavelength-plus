@@ -27,4 +27,30 @@ describe('PackEditor', () => {
       })
     )
   })
+
+  it('keeps lines that fail to import in the paste textarea instead of clearing them', async () => {
+    vi.mocked(supabase.rpc).mockImplementation((fn: string, args?: unknown) => {
+      const params = args as { p_left_label?: string } | undefined
+      if (fn === 'add_spectrum' && params?.p_left_label === 'Bad line') {
+        return Object.assign(Promise.resolve({ data: null, error: { message: 'boom' } }), {
+          single: vi.fn().mockResolvedValue({ data: null, error: { message: 'boom' } }),
+        }) as never
+      }
+      return Object.assign(Promise.resolve({ data: {}, error: null }), {
+        single: vi.fn().mockResolvedValue({ data: {}, error: null }),
+      }) as never
+    })
+
+    render(<PackEditor packId="pack-1" />)
+    await waitFor(() => expect(screen.getByText(/awful beer/i)).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: /paste a list/i }))
+    fireEvent.change(screen.getByLabelText(/paste a list/i), {
+      target: { value: 'Good line | Ok\nBad line | Nope' },
+    })
+
+    fireEvent.click(await screen.findByRole('button', { name: /add 2 spectrums/i }))
+
+    await waitFor(() => expect(screen.getByLabelText(/paste a list/i)).toHaveValue('Bad line | Nope'))
+  })
 })

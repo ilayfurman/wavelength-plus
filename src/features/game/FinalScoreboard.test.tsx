@@ -25,4 +25,13 @@ describe('FinalScoreboard', () => {
     expect(onPlayAgain).toHaveBeenCalled()
     expect(onNewTeams).toHaveBeenCalled()
   })
+
+  it('calls onBackToHome when provided and the button is clicked', () => {
+    const onBackToHome = vi.fn()
+    render(
+      <FinalScoreboard teams={[]} onPlayAgain={vi.fn()} onNewTeams={vi.fn()} onBackToHome={onBackToHome} />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /back to home/i }))
+    expect(onBackToHome).toHaveBeenCalled()
+  })
 })

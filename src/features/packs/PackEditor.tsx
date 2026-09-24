@@ -38,7 +38,7 @@ const statusLabel: Record<'ok' | 'needs-format' | 'duplicate', string> = {
   duplicate: 'Already in pack',
 }
 
-export function PackEditor({ packId }: { packId: string }) {
+export function PackEditor({ packId, onBack }: { packId: string; onBack?: () => void }) {
   const [spectrums, setSpectrums] = useState<Spectrum[]>([])
   const [left, setLeft] = useState('')
   const [right, setRight] = useState('')
@@ -76,10 +76,28 @@ export function PackEditor({ packId }: { packId: string }) {
   async function importPasted() {
     setImporting(true)
     try {
-      for (const pair of parsed.valid) {
-        await supabase.rpc('add_spectrum', { p_pack_id: packId, p_left_label: pair.left, p_right_label: pair.right })
+      const remainingLines: string[] = []
+      let validIndex = 0
+      for (const r of parsed.results) {
+        if (r.status !== 'ok') {
+          // Keep lines that were never imported (bad format / duplicate) so the
+          // user can see and fix them instead of losing them silently.
+          remainingLines.push(r.line)
+          continue
+        }
+        const pair = parsed.valid[validIndex]
+        validIndex += 1
+        const { error } = await supabase.rpc('add_spectrum', {
+          p_pack_id: packId,
+          p_left_label: pair.left,
+          p_right_label: pair.right,
+        })
+        if (error) {
+          // Failed to import (e.g. network/RPC error) — keep the line so it isn't lost.
+          remainingLines.push(r.line)
+        }
       }
-      setPasteText('')
+      setPasteText(remainingLines.join('\n'))
       await load()
     } finally {
       setImporting(false)
@@ -102,6 +120,8 @@ export function PackEditor({ packId }: { packId: string }) {
           margin: '0 auto',
         }}
       >
+        {onBack && <Btn kind="ghost" size="sm" label="← Back to packs" onClick={onBack} />}
+
         <h2 style={{ margin: 0, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>Pack editor</h2>
 
         <div style={cardStyle}>

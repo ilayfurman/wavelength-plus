@@ -79,6 +79,13 @@ describe('Lobby', () => {
     )
   })
 
+  it('shows an error message when onStartGame rejects', async () => {
+    const onStartGame = vi.fn().mockRejectedValue(new Error('No teams assigned yet'))
+    render(<Lobby partyId="party-1" roomCode="ABCD" isHost={true} onStartGame={onStartGame} />)
+    fireEvent.click(await screen.findByRole('button', { name: /^start game$/i }))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('No teams assigned yet'))
+  })
+
   it('calls assign_manual_team with the viewer own player id when joining a team in Pick mode', async () => {
     render(<Lobby partyId="party-1" roomCode="ABCD" isHost={true} onStartGame={vi.fn()} />)
     const pickButton = await screen.findByRole('radio', { name: /pick/i })

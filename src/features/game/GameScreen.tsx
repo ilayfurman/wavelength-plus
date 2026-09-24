@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import { useTurn } from './useTurn'
 import { DialFan } from '../../components/DialFan'
@@ -22,6 +22,7 @@ export function GameScreen({
   myMutedUntil,
   players,
   totalRounds,
+  noisesEnabled,
 }: {
   turnId: string
   myPlayerId: string
@@ -31,18 +32,40 @@ export function GameScreen({
   myMutedUntil: string | null
   players: { id: string; display_name: string }[]
   totalRounds: number
+  noisesEnabled?: boolean
 }) {
   const turn = useTurn(turnId)
   const [clueText, setClueText] = useState('')
   const [localGuess, setLocalGuess] = useState(0.5)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [spectrumLabels, setSpectrumLabels] = useState<{ left: string; right: string } | null>(null)
   const { broadcastMove } = useDialBroadcast(turnId, setLocalGuess)
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadSpectrum() {
+      if (!turn?.spectrum_id) return
+      const { data } = await supabase
+        .from('spectrums')
+        .select('left_label, right_label')
+        .eq('id', turn.spectrum_id)
+        .single()
+      if (!cancelled && data) {
+        setSpectrumLabels({ left: data.left_label, right: data.right_label })
+      }
+    }
+    void loadSpectrum()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turn?.spectrum_id])
 
   if (!turn) return <div>Loading…</div>
 
   const isPsychic = myPlayerId === turn.psychic_player_id
   const isActiveTeam = myTeamId === turn.team_id
-  const spectrumLabel = 'Cold ↔ Hot' // fetched from spectrums table in Task 19's pack-aware version; static label acceptable here since it's read via a separate query wired in Task 19
+  const spectrumLabel = spectrumLabels ? `${spectrumLabels.left} ↔ ${spectrumLabels.right}` : ''
   const psychicName = players.find((p) => p.id === turn.psychic_player_id)?.display_name ?? 'Psychic'
 
   async function submitClue(skipped: boolean) {
@@ -63,10 +86,29 @@ export function GameScreen({
   }
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div
+      style={{
+        position: 'relative',
+        minHeight: '100vh',
+        overflow: 'hidden',
+        background: 'var(--bg)',
+      }}
+    >
       <Starfield />
-      <div style={{ position: 'relative' }}>
-        <GameHeader round={turn.round_number} total={totalRounds} onMenu={() => isHost && setMenuOpen(true)} />
+      <div
+        style={{
+          position: 'relative',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '32px 20px',
+          boxSizing: 'border-box',
+          gap: 24,
+          maxWidth: 480,
+          margin: '0 auto',
+        }}
+      >
+        <GameHeader round={turn.round_number} total={totalRounds} onMenu={isHost ? () => setMenuOpen(true) : undefined} />
         {isHost && (
           <HostMenu
             open={menuOpen}
@@ -78,11 +120,19 @@ export function GameScreen({
           />
         )}
         <TeamScoreboard teams={teams} activeTeamId={turn.team_id} />
-        <Soundboard partyId={turn.party_id} myPlayerId={myPlayerId} mutedUntil={myMutedUntil} isHost={isHost} players={players} />
+        <Soundboard
+          partyId={turn.party_id}
+          myPlayerId={myPlayerId}
+          mutedUntil={myMutedUntil}
+          isHost={isHost}
+          players={players}
+          noisesEnabled={noisesEnabled}
+        />
         <div>{spectrumLabel}</div>
 
         {turn.status === 'clue' && isPsychic && (
           <div>
+            <DialFan value={turn.target_position ?? 0.5} revealedTarget={turn.target_position ?? undefined} />
             <ClueCard
               label="Your clue"
               clue={clueText}

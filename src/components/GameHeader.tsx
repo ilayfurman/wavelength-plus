@@ -5,7 +5,7 @@ interface GameHeaderProps {
   round: number
   total: number
   room?: string
-  onMenu: () => void
+  onMenu?: () => void
 }
 
 export function GameHeader({ round, total, room, onMenu }: GameHeaderProps) {
@@ -103,15 +103,17 @@ export function GameHeader({ round, total, room, onMenu }: GameHeaderProps) {
           <span style={roomCodeStyle}>{room}</span>
         </span>
       )}
-      <button
-        onClick={onMenu}
-        style={hamburgerButtonStyle}
-        aria-label="Menu"
-      >
-        <span style={hamburgerLineStyle} />
-        <span style={hamburgerLineStyle} />
-        <span style={hamburgerLineStyle} />
-      </button>
+      {onMenu && (
+        <button
+          onClick={onMenu}
+          style={hamburgerButtonStyle}
+          aria-label="Menu"
+        >
+          <span style={hamburgerLineStyle} />
+          <span style={hamburgerLineStyle} />
+          <span style={hamburgerLineStyle} />
+        </button>
+      )}
     </div>
   )
 }

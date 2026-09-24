@@ -104,10 +104,12 @@ export function FinalScoreboard({
   teams,
   onPlayAgain,
   onNewTeams,
+  onBackToHome,
 }: {
   teams: Team[]
   onPlayAgain: () => void
   onNewTeams: () => void
+  onBackToHome?: () => void
 }) {
   const sorted = [...teams].sort((a, b) => b.score - a.score)
   const winner = sorted[0]
@@ -138,6 +140,7 @@ export function FinalScoreboard({
         <div style={buttonsContainerStyle}>
           <Btn kind="primary" size="lg" label="Play again" onClick={onPlayAgain} />
           <Btn kind="secondary" size="lg" label="New teams" onClick={onNewTeams} />
+          {onBackToHome && <Btn kind="ghost" size="md" label="Back to home" onClick={onBackToHome} />}
         </div>
       </div>
     </div>

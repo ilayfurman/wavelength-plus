@@ -45,7 +45,13 @@ export function NameAvatarStep({ initialName, initialAvatar, onContinue }: NameA
       >
         <Logo variant="stacked" size="xl" />
 
-        <div style={{ width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            onContinue(name, avatar)
+          }}
+          style={{ width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 20 }}
+        >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <label htmlFor="display-name" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
               Name
@@ -64,8 +70,8 @@ export function NameAvatarStep({ initialName, initialAvatar, onContinue }: NameA
             <AvatarPicker value={avatar} onChange={setAvatar} />
           </div>
 
-          <Btn kind="primary" size="lg" label="Continue" onClick={() => onContinue(name, avatar)} />
-        </div>
+          <Btn kind="primary" size="lg" label="Continue" />
+        </form>
       </div>
     </div>
   )

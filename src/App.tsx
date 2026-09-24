@@ -9,11 +9,18 @@ import { joinParty } from './features/party/JoinParty'
 import { Lobby } from './features/party/Lobby'
 import { GameScreen } from './features/game/GameScreen'
 import { FinalScoreboard } from './features/game/FinalScoreboard'
+import { PacksList } from './features/packs/PacksList'
+import { PackEditor } from './features/packs/PackEditor'
 import { supabase } from './lib/supabaseClient'
 import { Starfield } from './components/Starfield'
 import { Logo } from './components/Logo'
 
-type Route = { name: 'home' } | { name: 'join'; roomCode: string } | { name: 'lobby'; partyId: string; roomCode: string; isHost: boolean }
+type Route =
+  | { name: 'home' }
+  | { name: 'join'; roomCode: string }
+  | { name: 'lobby'; partyId: string; roomCode: string; isHost: boolean }
+  | { name: 'packs' }
+  | { name: 'packEditor'; packId: string }
 
 function Splash() {
   return (
@@ -42,7 +49,17 @@ function Splash() {
   )
 }
 
-function PartyRoom({ partyId, roomCode, isHost }: { partyId: string; roomCode: string; isHost: boolean }) {
+function PartyRoom({
+  partyId,
+  roomCode,
+  isHost,
+  onBackToHome,
+}: {
+  partyId: string
+  roomCode: string
+  isHost: boolean
+  onBackToHome: () => void
+}) {
   const [status, setStatus] = useState<'lobby' | 'playing' | 'finished'>('lobby')
   const [currentTurnId, setCurrentTurnId] = useState<string | null>(null)
   const [teams, setTeams] = useState<{ id: string; name: string; score: number }[]>([])
@@ -51,11 +68,13 @@ function PartyRoom({ partyId, roomCode, isHost }: { partyId: string; roomCode: s
   const [myMutedUntil, setMyMutedUntil] = useState<string | null>(null)
   const [players, setPlayers] = useState<{ id: string; display_name: string }[]>([])
   const [rounds, setRounds] = useState(3)
+  const [noisesEnabled, setNoisesEnabled] = useState(true)
 
   async function reloadPartyState() {
-    const { data: party } = await supabase.from('parties').select('status, rounds').eq('id', partyId).single()
+    const { data: party } = await supabase.from('parties').select('status, rounds, noises_enabled').eq('id', partyId).single()
     setStatus(party!.status)
     setRounds(party!.rounds)
+    setNoisesEnabled(party!.noises_enabled)
     const { data: teamRows } = await supabase.from('teams').select('id, name, score').eq('party_id', partyId)
     setTeams(teamRows ?? [])
     const { data: turnRows } = await supabase
@@ -100,7 +119,8 @@ function PartyRoom({ partyId, roomCode, isHost }: { partyId: string; roomCode: s
         roomCode={roomCode}
         isHost={isHost}
         onStartGame={async () => {
-          await supabase.rpc('start_game', { p_party_id: partyId })
+          const { error } = await supabase.rpc('start_game', { p_party_id: partyId })
+          if (error) throw error
         }}
       />
     )
@@ -108,6 +128,7 @@ function PartyRoom({ partyId, roomCode, isHost }: { partyId: string; roomCode: s
   if (status === 'playing' && currentTurnId && myPlayerId && myTeamId) {
     return (
       <GameScreen
+        key={currentTurnId}
         turnId={currentTurnId}
         myPlayerId={myPlayerId}
         myTeamId={myTeamId}
@@ -116,6 +137,7 @@ function PartyRoom({ partyId, roomCode, isHost }: { partyId: string; roomCode: s
         myMutedUntil={myMutedUntil}
         players={players}
         totalRounds={rounds}
+        noisesEnabled={noisesEnabled}
       />
     )
   }
@@ -124,12 +146,20 @@ function PartyRoom({ partyId, roomCode, isHost }: { partyId: string; roomCode: s
       <FinalScoreboard
         teams={teams}
         onPlayAgain={async () => {
-          await supabase.rpc('start_game', { p_party_id: partyId })
+          const { error: restartError } = await supabase.rpc('restart_party', { p_party_id: partyId })
+          if (restartError) throw restartError
+          const { error } = await supabase.rpc('start_game', { p_party_id: partyId })
+          if (error) throw error
         }}
         onNewTeams={async () => {
-          await supabase.rpc('shuffle_teams', { p_party_id: partyId })
-          await supabase.rpc('start_game', { p_party_id: partyId })
+          const { error: restartError } = await supabase.rpc('restart_party', { p_party_id: partyId })
+          if (restartError) throw restartError
+          const { error: shuffleError } = await supabase.rpc('shuffle_teams', { p_party_id: partyId })
+          if (shuffleError) throw shuffleError
+          const { error } = await supabase.rpc('start_game', { p_party_id: partyId })
+          if (error) throw error
         }}
+        onBackToHome={onBackToHome}
       />
     )
   }
@@ -142,6 +172,7 @@ function Gate() {
   const [displayName, setDisplayName] = useState('Player')
   const [avatar, setAvatar] = useState('🌮')
   const [nameAvatarSet, setNameAvatarSet] = useState(false)
+  const [joinError, setJoinError] = useState<string | null>(null)
 
   useEffect(() => {
     const hash = window.location.hash.match(/^#\/join\/([A-Z]{4})$/i)
@@ -159,8 +190,13 @@ function Gate() {
   }
 
   async function handleJoin(roomCode: string) {
-    const player = (await joinParty(roomCode, displayName, avatar)) as { party_id: string }
-    setRoute({ name: 'lobby', partyId: player.party_id, roomCode, isHost: false })
+    setJoinError(null)
+    try {
+      const player = (await joinParty(roomCode, displayName, avatar)) as { party_id: string }
+      setRoute({ name: 'lobby', partyId: player.party_id, roomCode, isHost: false })
+    } catch (err) {
+      setJoinError(err instanceof Error ? err.message : 'Could not join that room. Check the code and try again.')
+    }
   }
 
   return (
@@ -177,10 +213,26 @@ function Gate() {
             }}
           />
         ) : (
-          <Home onCreate={handleCreate} onJoin={(code) => handleJoin(code)} />
+          <>
+            <Home onCreate={handleCreate} onJoin={(code) => handleJoin(code)} onOpenPacks={() => setRoute({ name: 'packs' })} />
+            {joinError && (
+              <p role="alert" style={{ position: 'fixed', bottom: 16, left: 0, right: 0, textAlign: 'center', color: 'var(--comets)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
+                {joinError}
+              </p>
+            )}
+          </>
         )
+      ) : route.name === 'packs' ? (
+        <PacksList onOpenPack={(packId) => setRoute({ name: 'packEditor', packId })} onBack={() => setRoute({ name: 'home' })} />
+      ) : route.name === 'packEditor' ? (
+        <PackEditor packId={route.packId} onBack={() => setRoute({ name: 'packs' })} />
       ) : (
-        <PartyRoom partyId={route.partyId} roomCode={route.roomCode} isHost={route.isHost} />
+        <PartyRoom
+          partyId={route.partyId}
+          roomCode={route.roomCode}
+          isHost={route.isHost}
+          onBackToHome={() => setRoute({ name: 'home' })}
+        />
       )}
     </div>
   )

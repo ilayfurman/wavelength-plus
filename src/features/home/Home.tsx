@@ -16,7 +16,15 @@ const inputStyle = {
   boxSizing: 'border-box' as const,
 }
 
-export function Home({ onCreate, onJoin }: { onCreate: () => void; onJoin: (roomCode: string) => void }) {
+export function Home({
+  onCreate,
+  onJoin,
+  onOpenPacks,
+}: {
+  onCreate: () => void
+  onJoin: (roomCode: string) => void
+  onOpenPacks?: () => void
+}) {
   const [roomCode, setRoomCode] = useState('')
 
   return (
@@ -50,7 +58,11 @@ export function Home({ onCreate, onJoin }: { onCreate: () => void; onJoin: (room
           <Btn kind="primary" size="lg" label="Create a party" onClick={onCreate} />
 
           <div style={{ width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                onJoin(roomCode.toUpperCase())
+              }}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -82,14 +94,11 @@ export function Home({ onCreate, onJoin }: { onCreate: () => void; onJoin: (room
                   style={inputStyle}
                 />
               </div>
-              <Btn
-                kind="accent"
-                size="lg"
-                label="Join party"
-                onClick={() => onJoin(roomCode.toUpperCase())}
-              />
-            </div>
+              <Btn kind="accent" size="lg" label="Join party" />
+            </form>
           </div>
+
+          {onOpenPacks && <Btn kind="ghost" size="sm" label="My packs" onClick={onOpenPacks} />}
         </div>
       </div>
     </div>

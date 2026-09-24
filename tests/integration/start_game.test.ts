@@ -53,4 +53,31 @@ describe('start_game', () => {
       expect(teamTurnCount).toBe(teamPlayerCount)
     }
   })
+
+  it('succeeds when a team has been left with zero players via assign_manual_team', async () => {
+    const host = await signUpAndSignIn()
+    const { data: party } = await host.rpc('create_party', { p_team_size: 2, p_rounds: 1 }).single()
+    const { data: hostPlayer } = await host
+      .rpc('join_party', { p_room_code: party.room_code, p_display_name: 'Host', p_avatar: '🧠' })
+      .single()
+    const guest = await signUpAndSignIn()
+    const { data: guestPlayer } = await guest
+      .rpc('join_party', { p_room_code: party.room_code, p_display_name: 'Guest', p_avatar: '🙂' })
+      .single()
+
+    // Manually create two teams, then move the host off Team A onto Team B,
+    // leaving Team A with zero players (but the team row still exists).
+    await host.rpc('assign_manual_team', { p_party_id: party.id, p_player_id: hostPlayer.id, p_team_name: 'Team A' })
+    await guest.rpc('assign_manual_team', { p_party_id: party.id, p_player_id: guestPlayer.id, p_team_name: 'Team B' })
+    await host.rpc('assign_manual_team', { p_party_id: party.id, p_player_id: hostPlayer.id, p_team_name: 'Team B' })
+
+    const { data: teams } = await host.from('teams').select('id, name').eq('party_id', party.id)
+    const teamA = teams!.find((t) => t.name === 'Team A')
+    const { data: teamAPlayers } = await host.from('players').select('id').eq('team_id', teamA!.id)
+    expect(teamAPlayers).toEqual([])
+
+    const { data: firstTurn, error } = await host.rpc('start_game', { p_party_id: party.id }).single()
+    expect(error).toBeNull()
+    expect(firstTurn.status).toBe('clue')
+  })
 })

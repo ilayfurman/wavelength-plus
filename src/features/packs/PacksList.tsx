@@ -29,7 +29,13 @@ const cardStyle = {
   boxSizing: 'border-box' as const,
 }
 
-export function PacksList({ onOpenPack }: { onOpenPack: (packId: string) => void }) {
+export function PacksList({
+  onOpenPack,
+  onBack,
+}: {
+  onOpenPack: (packId: string) => void
+  onBack?: () => void
+}) {
   const [packs, setPacks] = useState<Pack[]>([])
   const [newName, setNewName] = useState('')
 
@@ -66,6 +72,8 @@ export function PacksList({ onOpenPack }: { onOpenPack: (packId: string) => void
           margin: '0 auto',
         }}
       >
+        {onBack && <Btn kind="ghost" size="sm" label="← Back to home" onClick={onBack} />}
+
         <h2 style={{ margin: 0, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>My packs</h2>
 
         <div style={cardStyle}>

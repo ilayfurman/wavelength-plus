@@ -26,6 +26,11 @@ describe('Soundboard', () => {
     expect(mockChannel.send).not.toHaveBeenCalled()
   })
 
+  it('hides the sound buttons when noises are disabled', () => {
+    render(<Soundboard partyId="p1" myPlayerId="me" mutedUntil={null} isHost={false} players={[]} noisesEnabled={false} />)
+    expect(screen.queryByRole('button', { name: /airhorn/i })).not.toBeInTheDocument()
+  })
+
   it('lets the host mute another player', async () => {
     render(
       <Soundboard

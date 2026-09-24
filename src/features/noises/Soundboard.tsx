@@ -88,12 +88,14 @@ export function Soundboard({
   mutedUntil,
   isHost,
   players,
+  noisesEnabled = true,
 }: {
   partyId: string
   myPlayerId: string
   mutedUntil: string | null
   isHost: boolean
   players: { id: string; display_name: string }[]
+  noisesEnabled?: boolean
 }) {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({})
@@ -125,7 +127,7 @@ export function Soundboard({
   const remainingSeconds = secondsRemaining(mutedUntil)
 
   function playSound(sound: string) {
-    if (isMuted) return
+    if (isMuted || !noisesEnabled) return
     channelRef.current?.send({ type: 'broadcast', event: 'noise', payload: { sound } })
     setHitSound(sound)
     if (glowTimeoutRef.current) clearTimeout(glowTimeoutRef.current)
@@ -134,21 +136,23 @@ export function Soundboard({
 
   return (
     <div style={rowStyle}>
-      {SOUNDS.map(({ key, emoji, label }) => (
-        <button
-          key={key}
-          onClick={() => playSound(key)}
-          aria-label={key}
-          style={{ ...buttonStyle, opacity: isMuted ? 0.25 : 1 }}
-        >
-          <span style={iconStyle(hitSound === key)}>{emoji}</span>
-          <span style={captionStyle}>{label}</span>
-        </button>
-      ))}
+      {noisesEnabled &&
+        SOUNDS.map(({ key, emoji, label }) => (
+          <button
+            key={key}
+            onClick={() => playSound(key)}
+            aria-label={key}
+            disabled={isMuted}
+            style={{ ...buttonStyle, opacity: isMuted ? 0.25 : 1 }}
+          >
+            <span style={iconStyle(hitSound === key)}>{emoji}</span>
+            <span style={captionStyle}>{label}</span>
+          </button>
+        ))}
       {SOUNDS.map(({ key }) => (
         <audio key={key} ref={(el) => { if (el) audioRefs.current[key] = el }} src={`/sounds/${key}.mp3`} preload="auto" />
       ))}
-      {isMuted && (
+      {noisesEnabled && isMuted && (
         <div style={mutedOverlayWrapStyle}>
           <span style={mutedOverlayBadgeStyle}>
             Host muted you · 0:{String(remainingSeconds).padStart(2, '0')}

@@ -169,8 +169,10 @@ export function Lobby({
   partyId: string
   roomCode: string
   isHost: boolean
-  onStartGame: () => void
+  onStartGame: () => Promise<void> | void
 }) {
+  const [startError, setStartError] = useState<string | null>(null)
+  const [starting, setStarting] = useState(false)
   const [players, setPlayers] = useState<Player[]>([])
   const [teams, setTeams] = useState<Team[]>([])
   const [teamSize, setTeamSize] = useState(2)
@@ -294,8 +296,20 @@ export function Lobby({
     setTeamNameInput('')
   }
 
+  async function handleStartGame() {
+    setStartError(null)
+    setStarting(true)
+    try {
+      await onStartGame()
+    } catch (err) {
+      setStartError(err instanceof Error ? err.message : 'Could not start the game. Try again.')
+    } finally {
+      setStarting(false)
+    }
+  }
+
   const allTeamsAssigned = players.length > 0 && players.every((p) => p.team_id !== null)
-  const startDisabled = teamMode === 'manual' && !allTeamsAssigned
+  const startDisabled = (teamMode === 'manual' && !allTeamsAssigned) || starting
 
   return (
     <div style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
@@ -435,8 +449,13 @@ export function Lobby({
 
           {isHost && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 'auto' }}>
+              {startError && (
+                <span role="alert" style={{ color: 'var(--comets)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
+                  {startError}
+                </span>
+              )}
               <Btn kind="secondary" size="md" label="Reshuffle" onClick={reshuffle} />
-              <Btn kind="primary" size="lg" label="Start game" onClick={onStartGame} disabled={startDisabled} />
+              <Btn kind="primary" size="lg" label="Start game" onClick={handleStartGame} disabled={startDisabled} />
             </div>
           )}
         </div>
