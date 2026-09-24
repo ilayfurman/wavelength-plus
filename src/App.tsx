@@ -21,10 +21,12 @@ function PartyRoom({ partyId, roomCode, isHost }: { partyId: string; roomCode: s
   const [myTeamId, setMyTeamId] = useState<string | null>(null)
   const [myMutedUntil, setMyMutedUntil] = useState<string | null>(null)
   const [players, setPlayers] = useState<{ id: string; display_name: string }[]>([])
+  const [rounds, setRounds] = useState(3)
 
   async function reloadPartyState() {
-    const { data: party } = await supabase.from('parties').select('status').eq('id', partyId).single()
+    const { data: party } = await supabase.from('parties').select('status, rounds').eq('id', partyId).single()
     setStatus(party!.status)
+    setRounds(party!.rounds)
     const { data: teamRows } = await supabase.from('teams').select('id, name, score').eq('party_id', partyId)
     setTeams(teamRows ?? [])
     const { data: turnRows } = await supabase
@@ -84,6 +86,7 @@ function PartyRoom({ partyId, roomCode, isHost }: { partyId: string; roomCode: s
         isHost={isHost}
         myMutedUntil={myMutedUntil}
         players={players}
+        totalRounds={rounds}
       />
     )
   }

@@ -35,6 +35,7 @@ describe('GameScreen', () => {
         isHost={false}
         myMutedUntil={null}
         players={[]}
+        totalRounds={3}
       />
     )
     await waitFor(() => expect(screen.getByText(/cold/i)).toBeInTheDocument())
@@ -54,6 +55,7 @@ describe('GameScreen', () => {
         isHost={false}
         myMutedUntil={null}
         players={[]}
+        totalRounds={3}
       />
     )
     await waitFor(() => expect(screen.getByText(/waiting for the clue/i)).toBeInTheDocument())
