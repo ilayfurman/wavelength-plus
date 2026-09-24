@@ -1,25 +1,44 @@
-import { useRef, type PointerEvent } from 'react'
+import { useId, useRef, type PointerEvent } from 'react'
 import { WEDGE_THRESHOLDS } from '../lib/scoringConstants'
 
-const CX = 110
-const CY = 112
-const R = 100
+// Geometry constants from docs/design/reference/Dial.dc.html's renderVals().
+const CX = 180
+const CY = 178
+const RO = 150 // outer radius of the ring / bands
+const RI = 98 // inner radius of the ring / bands
+const RM = 124 // radius at which score labels sit
 
-function angleForValue(v: number) {
-  // v in [0,1] maps to [180deg, 0deg] (left = 0, right = 1), matching
-  // the "Hot ← / → Cold" label order used throughout the mockups.
-  return Math.PI * (1 - v)
+function clamp01(x: number) {
+  return Math.max(0, Math.min(1, x))
 }
 
-function pointOnArc(v: number, radius: number) {
-  const angle = angleForValue(v)
-  return { x: CX + radius * Math.cos(angle), y: CY - radius * Math.sin(angle) }
+/** P(v, r) — a point at value v (0..1) on a circle of radius r around the pivot. */
+function P(v: number, r: number): [number, number] {
+  const a = Math.PI * (1 - v)
+  return [CX + r * Math.cos(a), CY - r * Math.sin(a)]
 }
 
-function wedgePath(fromV: number, toV: number, radius: number) {
-  const p1 = pointOnArc(fromV, radius)
-  const p2 = pointOnArc(toV, radius)
-  return `M ${CX} ${CY} L ${p1.x} ${p1.y} A ${radius} ${radius} 0 0 1 ${p2.x} ${p2.y} Z`
+function f(q: [number, number]) {
+  return `${q[0].toFixed(1)} ${q[1].toFixed(1)}`
+}
+
+/** An annular-sector path between radius RI and RO, spanning values [a,b]. */
+function band(a: number, b: number) {
+  a = clamp01(a)
+  b = clamp01(b)
+  if (b - a < 0.001) return ''
+  return `M${f(P(a, RO))} A${RO} ${RO} 0 0 1 ${f(P(b, RO))} L${f(P(b, RI))} A${RI} ${RI} 0 0 0 ${f(P(a, RI))} Z`
+}
+
+/** Label position + rotation for the score number at value m along radius RM. */
+function lbl(m: number) {
+  const q = P(m, RM)
+  return {
+    x: q[0].toFixed(1),
+    y: q[1].toFixed(1),
+    tf: `rotate(${((m - 0.5) * 180).toFixed(1)} ${q[0].toFixed(1)} ${q[1].toFixed(1)})`,
+    op: m > 0.02 && m < 0.98 ? 1 : 0,
+  }
 }
 
 export function DialFan({
@@ -34,22 +53,35 @@ export function DialFan({
   revealedTarget?: number
 }) {
   const svgRef = useRef<SVGSVGElement>(null)
+  const draggingRef = useRef(false)
   const isInteractive = interactive && !!onChange
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, '')
 
   function valueFromPointer(e: PointerEvent<SVGSVGElement>) {
     const svg = svgRef.current
     if (!svg) return value
     const rect = svg.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    const angle = Math.atan2(CY - y, x - CX)
-    const clamped = Math.max(0, Math.min(Math.PI, angle))
-    return Math.round((1 - clamped / Math.PI) * 100) / 100
+    const x = ((e.clientX - rect.left) * 360) / rect.width
+    const y = ((e.clientY - rect.top) * 250) / rect.height
+    let a = Math.atan2(CY - y, x - CX)
+    if (a < 0) a = x < CX ? Math.PI : 0
+    return Math.round((1 - a / Math.PI) * 100) / 100
+  }
+
+  function handlePointerDown(e: PointerEvent<SVGSVGElement>) {
+    if (!isInteractive) return
+    draggingRef.current = true
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+    onChange?.(valueFromPointer(e))
   }
 
   function handlePointerMove(e: PointerEvent<SVGSVGElement>) {
-    if (!isInteractive || e.buttons !== 1) return
+    if (!isInteractive || !draggingRef.current) return
     onChange?.(valueFromPointer(e))
+  }
+
+  function handlePointerUp() {
+    draggingRef.current = false
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -59,8 +91,16 @@ export function DialFan({
   }
 
   const t = WEDGE_THRESHOLDS
-  const needleAngle = angleForValue(value)
-  const needleTip = pointOnArc(value, R * 0.68)
+
+  // Needle: tapered polygon per reference.
+  const a = Math.PI * (1 - value)
+  const tip = P(value, RO + 2)
+  const qx = Math.sin(a) * 6
+  const qy = Math.cos(a) * 6
+  const needle = `${tip[0].toFixed(1)},${tip[1].toFixed(1)} ${(CX + qx).toFixed(1)},${(CY + qy).toFixed(1)} ${(CX - qx).toFixed(1)},${(CY - qy).toFixed(1)}`
+
+  const showBands = revealedTarget !== undefined
+  const target = revealedTarget ?? 0
 
   return (
     <svg
@@ -72,23 +112,85 @@ export function DialFan({
       aria-readonly={!isInteractive}
       tabIndex={isInteractive ? 0 : -1}
       onKeyDown={handleKeyDown}
+      onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
-      width={220}
-      height={125}
-      viewBox="0 0 220 125"
+      onPointerUp={handlePointerUp}
+      viewBox="0 0 360 250"
+      style={{
+        width: '100%',
+        height: 'auto',
+        touchAction: 'none',
+        overflow: 'visible',
+        filter: 'drop-shadow(0 0 28px rgba(140,110,255,.4))',
+        cursor: isInteractive ? 'grab' : 'default',
+      }}
     >
-      <path d={`M 10 ${CY} A ${R} ${R} 0 0 1 210 ${CY} Z`} fill="#F3ECDD" />
-      <path d={wedgePath(0.5 + t.outer, 0.5 + t.inner, R)} fill="#E8A33D" />
-      <path d={wedgePath(0.5 + t.inner, 0.5 + t.center, R)} fill="#D9482F" />
-      <path d={wedgePath(0.5 + t.center, 0.5 - t.center, R)} fill="#4FB8AE" />
-      <path d={wedgePath(0.5 - t.center, 0.5 - t.inner, R)} fill="#D9482F" />
-      <path d={wedgePath(0.5 - t.inner, 0.5 - t.outer, R)} fill="#E8A33D" />
-      {revealedTarget !== undefined && (
-        <circle cx={pointOnArc(revealedTarget, R * 0.85).x} cy={pointOnArc(revealedTarget, R * 0.85).y} r={6} fill="#2E7D6B" />
+      <defs>
+        <linearGradient id={`rg${uid}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2E2266" />
+          <stop offset="1" stopColor="#15103A" />
+        </linearGradient>
+        <radialGradient id={`nd${uid}`} cx="40%" cy="38%" r="60%">
+          <stop offset="0" stopColor="#FFFFFF" />
+          <stop offset=".45" stopColor="#FFE9A8" />
+          <stop offset="1" stopColor="#F2A93B" />
+        </radialGradient>
+        <radialGradient id={`pl${uid}`} cx="38%" cy="30%" r="75%">
+          <stop offset="0" stopColor="#FFFFFF" />
+          <stop offset=".5" stopColor="#D9D3F2" />
+          <stop offset="1" stopColor="#7E73B8" />
+        </radialGradient>
+      </defs>
+
+      {/* Ring background: filled annular arc from RI to RO. */}
+      <path
+        d="M30 178 A150 150 0 0 1 330 178 L278 178 A98 98 0 0 0 82 178 Z"
+        fill={`url(#rg${uid})`}
+        stroke="rgba(190,170,255,.4)"
+        strokeWidth={1.5}
+      />
+
+      {showBands && (
+        <>
+          <path d={band(target - t.outer, target - t.inner)} fill="#8C6BFF" />
+          <path d={band(target - t.inner, target - t.center)} fill="#FF6FA3" />
+          <path d={band(target - t.center, target + t.center)} fill="#FFD166" />
+          <path d={band(target + t.center, target + t.inner)} fill="#FF6FA3" />
+          <path d={band(target + t.inner, target + t.outer)} fill="#8C6BFF" />
+          {[
+            { m: target - (t.outer + t.inner) / 2, label: '2' },
+            { m: target - (t.inner + t.center) / 2, label: '3' },
+            { m: target, label: '4' },
+            { m: target + (t.inner + t.center) / 2, label: '3' },
+            { m: target + (t.outer + t.inner) / 2, label: '2' },
+          ].map(({ m, label }, i) => {
+            const o = lbl(m)
+            return (
+              <text
+                key={i}
+                x={o.x}
+                y={o.y}
+                transform={o.tf}
+                opacity={o.op}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                style={{ font: '700 16px Rubik, sans-serif' }}
+                fill="#1A1233"
+              >
+                {label}
+              </text>
+            )
+          })}
+        </>
       )}
-      <line x1={CX} y1={CY} x2={needleTip.x} y2={needleTip.y} stroke="#E8394A" strokeWidth={7} strokeLinecap="round" />
-      <circle cx={CX} cy={CY} r={30} fill="#E8394A" />
-      {needleAngle >= 0 && null}
+
+      {/* Needle drop shadow, drawn underneath the main needle. */}
+      <polygon points={needle} fill="#FFD166" opacity={0.25} transform="translate(0 3)" />
+      <polygon points={needle} fill={`url(#nd${uid})`} stroke="#FFF4D6" strokeWidth={1} strokeLinejoin="round" />
+
+      {/* Pivot cap. */}
+      <path d="M148 181 A32 32 0 0 1 212 181 Z" fill={`url(#pl${uid})`} />
+      <ellipse cx={172} cy={162} rx={10} ry={5} fill="#fff" opacity={0.6} transform="rotate(-20 172 162)" />
     </svg>
   )
 }

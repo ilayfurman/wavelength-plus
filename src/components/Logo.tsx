@@ -82,7 +82,7 @@ export function Logo({
     iconSize >= 100
       ? '0 0 60px rgba(140,110,255,.35), 0 14px 34px rgba(0,0,0,.45)'
       : '0 6px 16px rgba(0,0,0,.35)'
-  const scale = inner / 220 // DialFan's native SVG width is 220px
+  const scale = inner / 360 // DialFan's native SVG width is 360px (Task 4 geometry)
 
   return (
     <div
@@ -103,16 +103,14 @@ export function Logo({
       <div
         style={{
           width: inner,
-          height: Math.round((125 / 220) * inner),
+          height: Math.round((250 / 360) * inner),
           marginTop: mt,
           overflow: 'hidden',
         }}
       >
-        {/* Non-interactive mini dial. NOTE: this reuses the current
-            DialFan geometry (Task 3's), scaled down via CSS transform.
-            Task 4 rebuilds DialFan with new "on the retsef" geometry —
-            once that lands, this should be revisited/re-verified visually. */}
-        <div style={{ width: 220, height: 125, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+        {/* Non-interactive mini dial, scaled down via CSS transform from
+            DialFan's native 360x250 viewBox (Task 4 geometry). */}
+        <div style={{ width: 360, height: 250, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
           <DialFan value={0.62} />
         </div>
       </div>
