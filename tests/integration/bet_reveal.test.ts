@@ -164,6 +164,138 @@ describe('place_bet / reveal_turn', () => {
     expect(error).not.toBeNull()
   })
 
+  it('auto-reveals as a side effect of the last team\'s place_bet, without any explicit reveal_turn call', async () => {
+    const host = await signUpAndSignIn()
+    const { data: party } = await host.rpc('create_party', { p_team_size: 2, p_rounds: 1 }).single()
+    await host.rpc('join_party', { p_room_code: party.room_code, p_display_name: 'Host', p_avatar: '🧠' })
+    const clients = [host]
+    for (let i = 1; i < 6; i++) {
+      const c = await signUpAndSignIn()
+      await c.rpc('join_party', { p_room_code: party.room_code, p_display_name: `P${i}`, p_avatar: '🙂' })
+      clients.push(c)
+    }
+    await host.rpc('shuffle_teams', { p_party_id: party.id }) // 3 teams of 2
+    const { data: firstTurn } = await host.rpc('start_game', { p_party_id: party.id }).single()
+
+    const { data: players } = await host.from('players').select('*').eq('party_id', party.id)
+    const accountIdToClient = await buildAccountIdToClient(clients)
+    const psychicRow = players!.find((p) => p.id === firstTurn.psychic_player_id)!
+    const psychicClient = accountIdToClient.get(psychicRow.account_id)!
+
+    await psychicClient.rpc('submit_clue', { p_turn_id: firstTurn.id, p_clue_text: 'x', p_skipped: false })
+    await psychicClient.rpc('lock_guess', { p_turn_id: firstTurn.id, p_guess_position: 0.5 })
+
+    const { data: turnAfterLock } = await host.from('turns_view').select('team_id').eq('id', firstTurn.id).single()
+    const otherTeamPlayers = players!.filter((p) => p.team_id !== turnAfterLock!.team_id)
+    const bettingTeamIds = [...new Set(otherTeamPlayers.map((p) => p.team_id))]
+    expect(bettingTeamIds.length).toBe(2)
+
+    // First of the two betting teams places its bet. This must NOT trigger
+    // a premature reveal, since one other team still hasn't bet.
+    const firstBettor = otherTeamPlayers.find((p) => p.team_id === bettingTeamIds[0])!
+    const firstBettorClient = accountIdToClient.get(firstBettor.account_id)!
+    const { error: firstBetError } = await firstBettorClient.rpc('place_bet', {
+      p_turn_id: firstTurn.id,
+      p_team_id: bettingTeamIds[0],
+      p_direction: 'left',
+    })
+    expect(firstBetError).toBeNull()
+
+    const { data: turnAfterFirstBet } = await host.from('turns_view').select('status').eq('id', firstTurn.id).single()
+    expect(turnAfterFirstBet!.status).toBe('betting')
+
+    // Second (last) betting team places its bet. This completes the set of
+    // required bets, so place_bet itself must trigger the reveal, with no
+    // explicit call to reveal_turn anywhere in this test.
+    const secondBettor = otherTeamPlayers.find((p) => p.team_id === bettingTeamIds[1])!
+    const secondBettorClient = accountIdToClient.get(secondBettor.account_id)!
+    const { error: secondBetError } = await secondBettorClient.rpc('place_bet', {
+      p_turn_id: firstTurn.id,
+      p_team_id: bettingTeamIds[1],
+      p_direction: 'left',
+    })
+    expect(secondBetError).toBeNull()
+
+    const { data: turnAfterLastBet } = await host.from('turns_view').select('status').eq('id', firstTurn.id).single()
+    expect(turnAfterLastBet!.status).toBe('revealed')
+  })
+
+  it('auto-reveals correctly even when one team has been left with zero players', async () => {
+    const host = await signUpAndSignIn()
+    const { data: party } = await host.rpc('create_party', { p_team_size: 2, p_rounds: 1 }).single()
+    const { data: hostPlayer } = await host
+      .rpc('join_party', { p_room_code: party.room_code, p_display_name: 'Host', p_avatar: '🧠' })
+      .single()
+    const guests = []
+    for (let i = 1; i < 4; i++) {
+      const c = await signUpAndSignIn()
+      const { data: p } = await c
+        .rpc('join_party', { p_room_code: party.room_code, p_display_name: `P${i}`, p_avatar: '🙂' })
+        .single()
+      guests.push({ client: c, player: p })
+    }
+
+    // Build three named teams manually: Team A (host + guest1), Team B (guest2),
+    // Team C (guest3) -- then move guest2 onto Team C, leaving Team B empty.
+    await host.rpc('assign_manual_team', { p_party_id: party.id, p_player_id: hostPlayer.id, p_team_name: 'Team A' })
+    await guests[0].client.rpc('assign_manual_team', {
+      p_party_id: party.id,
+      p_player_id: guests[0].player.id,
+      p_team_name: 'Team A',
+    })
+    await guests[1].client.rpc('assign_manual_team', {
+      p_party_id: party.id,
+      p_player_id: guests[1].player.id,
+      p_team_name: 'Team B',
+    })
+    await guests[2].client.rpc('assign_manual_team', {
+      p_party_id: party.id,
+      p_player_id: guests[2].player.id,
+      p_team_name: 'Team C',
+    })
+    await guests[1].client.rpc('assign_manual_team', {
+      p_party_id: party.id,
+      p_player_id: guests[1].player.id,
+      p_team_name: 'Team C',
+    })
+
+    const { data: teams } = await host.from('teams').select('id, name').eq('party_id', party.id)
+    const teamB = teams!.find((t) => t.name === 'Team B')!
+    const { data: teamBPlayers } = await host.from('players').select('id').eq('team_id', teamB.id)
+    expect(teamBPlayers).toEqual([])
+
+    const { data: firstTurn, error: startError } = await host.rpc('start_game', { p_party_id: party.id }).single()
+    expect(startError).toBeNull()
+
+    const { data: players } = await host.from('players').select('*').eq('party_id', party.id)
+    const clients = [host, ...guests.map((g) => g.client)]
+    const accountIdToClient = await buildAccountIdToClient(clients)
+    const psychicRow = players!.find((p) => p.id === firstTurn.psychic_player_id)!
+    const psychicClient = accountIdToClient.get(psychicRow.account_id)!
+
+    await psychicClient.rpc('submit_clue', { p_turn_id: firstTurn.id, p_clue_text: 'x', p_skipped: false })
+    await psychicClient.rpc('lock_guess', { p_turn_id: firstTurn.id, p_guess_position: 0.5 })
+
+    const { data: turnAfterLock } = await host.from('turns_view').select('team_id, status').eq('id', firstTurn.id).single()
+    expect(turnAfterLock!.status).toBe('betting')
+
+    // Only one non-active, non-empty team exists (Team C, since Team B is empty
+    // and the active team is excluded). Its bet must be the only one required,
+    // and placing it must auto-reveal despite the empty Team B in the party.
+    const activeTeamId = turnAfterLock!.team_id
+    const bettingPlayer = players!.find((p) => p.team_id !== activeTeamId && p.team_id !== teamB.id)!
+    const bettingClient = accountIdToClient.get(bettingPlayer.account_id)!
+    const { error: betError } = await bettingClient.rpc('place_bet', {
+      p_turn_id: firstTurn.id,
+      p_team_id: bettingPlayer.team_id,
+      p_direction: 'left',
+    })
+    expect(betError).toBeNull()
+
+    const { data: turnAfterBet } = await host.from('turns_view').select('status').eq('id', firstTurn.id).single()
+    expect(turnAfterBet!.status).toBe('revealed')
+  })
+
   it('rejects reveal_turn from a caller who is not a member of the turn\'s party', async () => {
     const host = await signUpAndSignIn()
     const { data: party } = await host.rpc('create_party', { p_team_size: 2, p_rounds: 1 }).single()
