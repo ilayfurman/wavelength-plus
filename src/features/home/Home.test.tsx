@@ -3,10 +3,10 @@ import { describe, it, expect, vi } from 'vitest'
 import { Home } from './Home'
 
 describe('Home', () => {
-  it('calls onCreate when Create party is clicked', () => {
+  it('calls onCreate when Create a party is clicked', () => {
     const onCreate = vi.fn()
     render(<Home onCreate={onCreate} onJoin={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: /create party/i }))
+    fireEvent.click(screen.getByRole('button', { name: /create a party/i }))
     expect(onCreate).toHaveBeenCalled()
   })
 
