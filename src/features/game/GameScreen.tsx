@@ -9,6 +9,7 @@ import { Btn } from '../../components/Btn'
 import { Starfield } from '../../components/Starfield'
 import { useDialBroadcast } from './useDialBroadcast'
 import { Soundboard } from '../noises/Soundboard'
+import { HostMenu } from './HostMenu'
 
 type Team = { id: string; name: string; score: number }
 
@@ -65,10 +66,16 @@ export function GameScreen({
     <div style={{ position: 'relative' }}>
       <Starfield />
       <div style={{ position: 'relative' }}>
-        <GameHeader round={turn.round_number} total={totalRounds} onMenu={() => setMenuOpen(true)} />
-        {menuOpen && (
-          // TODO(Task 14): replace this stub with the real HostMenu bottom sheet.
-          <div>Menu (coming in Task 14)</div>
+        <GameHeader round={turn.round_number} total={totalRounds} onMenu={() => isHost && setMenuOpen(true)} />
+        {isHost && (
+          <HostMenu
+            open={menuOpen}
+            onClose={() => setMenuOpen(false)}
+            partyId={turn.party_id}
+            currentPsychicName={psychicName}
+            players={players}
+            myPlayerId={myPlayerId}
+          />
         )}
         <TeamScoreboard teams={teams} activeTeamId={turn.team_id} />
         <Soundboard partyId={turn.party_id} myPlayerId={myPlayerId} mutedUntil={myMutedUntil} isHost={isHost} players={players} />
