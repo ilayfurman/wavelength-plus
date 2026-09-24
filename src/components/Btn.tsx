@@ -1,4 +1,4 @@
-import { CSSProperties } from 'react'
+import type { CSSProperties } from 'react'
 import './Btn.css'
 
 type Kind = 'primary' | 'secondary' | 'accent' | 'ghost'

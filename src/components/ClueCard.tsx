@@ -1,4 +1,5 @@
-import { CSSProperties, useState } from 'react'
+import { useState } from 'react'
+import type { CSSProperties } from 'react'
 
 type Tone = 'default' | 'gold' | 'nova'
 type Size = 'md' | 'lg'
