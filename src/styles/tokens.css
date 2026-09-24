@@ -1,0 +1,32 @@
+:root {
+  color-scheme: dark;
+  --bg: #09081A;
+  --bg-glow: radial-gradient(120% 55% at 50% 58%, #2C2266 0%, #16123A 46%, #09081A 100%);
+  --surface: linear-gradient(180deg, rgba(52,40,110,.55), rgba(24,18,56,.6));
+  --surface-border: rgba(200,180,255,.12);
+  --sheet: linear-gradient(180deg, #221B4F, #130F30);
+  --input-bg: rgba(8,6,24,.6);
+  --input-border: rgba(200,180,255,.18);
+  --text: #F4F2FB;
+  --text-muted: #A9A3C9;
+  --text-subtle: #8A84AA;
+  --text-subtle-2: #6F6893;
+  --lavender: #CFC0FF;
+  --gold: #FFD166;
+  --gold-cta: linear-gradient(180deg,#FFE08A 0%,#FFC94D 55%,#F2A93B 100%);
+  --gold-cta-text: #1A1233;
+  --comets: #FF6FA3;
+  --comets-soft: #FF8FB8;
+  --comets-softer: #FFC2D8;
+  --novas: #5BD6FF;
+  --novas-soft: #8FE3FF;
+  --novas-softer: #BDEBFF;
+  --violet: #8C6BFF;
+  --violet-soft: #A98BFF;
+  --cream: #F3ECDD;
+  --wordmark-gradient: linear-gradient(90deg,#FFD166,#FF8FB1 55%,#A98BFF);
+  --font-display: 'Fredoka', ui-rounded, system-ui, sans-serif;
+  --font-body: 'Rubik', system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, Menlo, monospace;
+}
+body { background: var(--bg); color: var(--text); }

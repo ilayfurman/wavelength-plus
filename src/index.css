@@ -1,0 +1,8 @@
+@import './styles/tokens.css';
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}

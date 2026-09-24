@@ -24,7 +24,7 @@ export function SignIn() {
 
   return (
     <div>
-      <h1>Wavelength Plus</h1>
+      <h1>On the Retsef</h1>
       {!codeSent ? (
         <form onSubmit={sendCode}>
           <label htmlFor="email">Email</label>

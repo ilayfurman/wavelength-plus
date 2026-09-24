@@ -10,7 +10,7 @@ export function Home({ onCreate, onJoin }: { onCreate: () => void; onJoin: (room
 
   return (
     <div>
-      <h1>Wavelength Plus</h1>
+      <h1>On the Retsef</h1>
       <button onClick={onCreate}>Create party</button>
       <form onSubmit={submitJoin}>
         <label htmlFor="room-code">Room code</label>
