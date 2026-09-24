@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent } from 'react'
+import { useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import { Starfield } from '../../components/Starfield'
 import { Logo } from '../../components/Logo'
@@ -40,14 +40,16 @@ export function SignIn() {
   const [error, setError] = useState<string | null>(null)
   const digitRefs = useRef<Array<HTMLInputElement | null>>([])
 
-  async function sendCode() {
+  async function sendCode(e: FormEvent) {
+    e.preventDefault()
     setError(null)
     const { error } = await supabase.auth.signInWithOtp({ email })
     if (error) setError(error.message)
     else setCodeSent(true)
   }
 
-  async function verifyCode() {
+  async function verifyCode(e: FormEvent) {
+    e.preventDefault()
     setError(null)
     const code = digits.join('')
     const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' })
@@ -72,6 +74,24 @@ export function SignIn() {
     }
   }
 
+  function handleDigitPaste(index: number, e: ClipboardEvent<HTMLInputElement>) {
+    const pasted = e.clipboardData.getData('text').replace(/[^0-9]/g, '')
+    if (!pasted) return
+    e.preventDefault()
+    setDigits((prev) => {
+      const next = [...prev]
+      let cursor = index
+      for (const char of pasted) {
+        if (cursor >= CODE_LENGTH) break
+        next[cursor] = char
+        cursor += 1
+      }
+      const focusIndex = Math.min(cursor, CODE_LENGTH - 1)
+      digitRefs.current[focusIndex]?.focus()
+      return next
+    })
+  }
+
   return (
     <div style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
       <Starfield />
@@ -92,7 +112,7 @@ export function SignIn() {
 
         <div style={{ width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 20 }}>
           {!codeSent ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <form onSubmit={sendCode} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <label htmlFor="email" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
                   Email
@@ -106,10 +126,10 @@ export function SignIn() {
                   style={inputStyle}
                 />
               </div>
-              <Btn kind="primary" size="lg" label="Send code" onClick={sendCode} />
-            </div>
+              <Btn kind="primary" size="lg" label="Send code" />
+            </form>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <form onSubmit={verifyCode} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <span id="otp-group-label" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
                   6-digit code
@@ -132,13 +152,14 @@ export function SignIn() {
                       value={digit}
                       onChange={(e) => handleDigitChange(index, e.target.value)}
                       onKeyDown={(e) => handleDigitKeyDown(index, e)}
+                      onPaste={(e) => handleDigitPaste(index, e)}
                       style={digitBoxStyle}
                     />
                   ))}
                 </div>
               </div>
-              <Btn kind="primary" size="lg" label="Verify" onClick={verifyCode} />
-            </div>
+              <Btn kind="primary" size="lg" label="Verify" />
+            </form>
           )}
           {error && (
             <p role="alert" style={{ color: 'var(--comets)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
