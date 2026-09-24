@@ -30,6 +30,21 @@ function band(a: number, b: number) {
   return `M${f(P(a, RO))} A${RO} ${RO} 0 0 1 ${f(P(b, RO))} L${f(P(b, RI))} A${RI} ${RI} 0 0 0 ${f(P(a, RI))} Z`
 }
 
+/**
+ * Pure angle-to-value conversion, ported from the reference's `setFrom()`.
+ * Given a point (x, y) in the dial's local 360x250 coordinate space and the
+ * pivot (cx, cy), returns the value in [0,1] that a pointer at that position
+ * corresponds to. Angles below the semicircle (a < 0, i.e. the pointer is
+ * below the pivot line) are clamped to whichever end of the dial (0 or 1)
+ * they're nearest to, so a drag that overshoots past either tip still
+ * produces a sane in-range value instead of jumping to the opposite end.
+ */
+export function angleToValue(x: number, y: number, cx: number, cy: number): number {
+  let a = Math.atan2(cy - y, x - cx)
+  if (a < 0) a = x < cx ? Math.PI : 0
+  return Math.round((1 - a / Math.PI) * 100) / 100
+}
+
 /** Label position + rotation for the score number at value m along radius RM. */
 function lbl(m: number) {
   const q = P(m, RM)
@@ -63,9 +78,7 @@ export function DialFan({
     const rect = svg.getBoundingClientRect()
     const x = ((e.clientX - rect.left) * 360) / rect.width
     const y = ((e.clientY - rect.top) * 250) / rect.height
-    let a = Math.atan2(CY - y, x - CX)
-    if (a < 0) a = x < CX ? Math.PI : 0
-    return Math.round((1 - a / Math.PI) * 100) / 100
+    return angleToValue(x, y, CX, CY)
   }
 
   function handlePointerDown(e: PointerEvent<SVGSVGElement>) {
