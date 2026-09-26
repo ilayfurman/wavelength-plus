@@ -3,34 +3,50 @@ import { supabase } from '../../lib/supabaseClient'
 import { Starfield } from '../../components/Starfield'
 import { Logo } from '../../components/Logo'
 import { Btn } from '../../components/Btn'
+import { DialFan } from '../../components/DialFan'
 
 const CODE_LENGTH = 6
 
-const inputStyle = {
-  width: '100%',
-  height: 52,
-  padding: '0 16px',
-  borderRadius: 14,
+const pillInputStyle = {
+  height: 58,
+  borderRadius: 999,
   background: 'var(--input-bg)',
   border: '1px solid var(--input-border)',
+  padding: '0 22px',
   color: 'var(--text)',
   fontFamily: 'var(--font-body)',
-  fontSize: 16,
+  fontSize: 17,
+  fontWeight: 500,
+  outline: 'none',
   boxSizing: 'border-box' as const,
+  width: '100%',
 }
 
 const digitBoxStyle = {
-  width: 44,
-  height: 52,
-  borderRadius: 14,
+  height: 64,
+  borderRadius: 16,
   background: 'var(--input-bg)',
   border: '1px solid var(--input-border)',
   color: 'var(--text)',
   fontFamily: 'var(--font-body)',
-  fontSize: 22,
-  fontWeight: 600,
+  fontSize: 28,
+  fontWeight: 700,
   textAlign: 'center' as const,
   boxSizing: 'border-box' as const,
+}
+
+const backButtonStyle = {
+  width: 40,
+  height: 40,
+  borderRadius: '50%',
+  background: 'rgba(255,255,255,.06)',
+  border: '1px solid rgba(200,180,255,.16)',
+  color: 'var(--text)',
+  fontFamily: 'var(--font-body)',
+  fontSize: 22,
+  lineHeight: 1,
+  cursor: 'pointer',
+  flex: 'none',
 }
 
 export function SignIn() {
@@ -99,74 +115,119 @@ export function SignIn() {
         style={{
           position: 'relative',
           minHeight: '100vh',
+          maxWidth: 480,
+          margin: '0 auto',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 32,
+          gap: 16,
           padding: '32px 20px',
           boxSizing: 'border-box',
         }}
       >
-        <Logo variant="stacked" size="xl" />
-
-        <div style={{ width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {!codeSent ? (
-            <form onSubmit={sendCode} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label htmlFor="email" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
-                  Email
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  style={inputStyle}
-                />
+        {!codeSent ? (
+          <form onSubmit={sendCode} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: 18,
+              }}
+            >
+              <div style={{ width: '100%', maxWidth: 280 }}>
+                <DialFan value={0.3} revealedTarget={0.64} />
               </div>
-              <Btn kind="primary" size="lg" label="Send code" />
-            </form>
-          ) : (
-            <form onSubmit={verifyCode} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <span id="otp-group-label" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
+              <Logo variant="stacked" size="lg" />
+              <p
+                style={{
+                  margin: 0,
+                  font: '400 16px/1.4 var(--font-body)',
+                  color: 'var(--text-muted)',
+                  textAlign: 'center',
+                }}
+              >
+                Give a clue. Guess the spot.
+                <br />
+                How close can you get?
+              </p>
+            </div>
+            <input
+              id="email"
+              aria-label="Email"
+              type="email"
+              placeholder="you@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              style={pillInputStyle}
+            />
+            <Btn kind="primary" size="lg" label="Send code" />
+          </form>
+        ) : (
+          <form onSubmit={verifyCode} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <button
+              type="button"
+              onClick={() => setCodeSent(false)}
+              aria-label="Back"
+              style={backButtonStyle}
+            >
+              &lsaquo;
+            </button>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16 }}>
+              <h1 style={{ margin: 0, font: '700 32px/1.1 var(--font-display)', color: 'var(--text)' }}>
+                Check your email
+              </h1>
+              <p style={{ margin: 0, font: '400 16px/1.45 var(--font-body)', color: 'var(--text-muted)' }}>
+                We sent a {CODE_LENGTH}-digit code to{' '}
+                <span style={{ color: 'var(--text)', fontWeight: 500 }}>{email}</span>
+              </p>
+              <div
+                role="group"
+                aria-labelledby="otp-group-label"
+                style={{ display: 'grid', gridTemplateColumns: `repeat(${CODE_LENGTH}, minmax(0,1fr))`, gap: 8, marginTop: 6 }}
+              >
+                <span id="otp-group-label" style={{ display: 'none' }}>
                   6-digit code
                 </span>
-                <div
-                  role="group"
-                  aria-labelledby="otp-group-label"
-                  style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}
-                >
-                  {digits.map((digit, index) => (
-                    <input
-                      key={index}
-                      id={`otp-${index}`}
-                      aria-label={`Code digit ${index + 1}`}
-                      ref={(el) => {
-                        digitRefs.current[index] = el
-                      }}
-                      inputMode="numeric"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleDigitChange(index, e.target.value)}
-                      onKeyDown={(e) => handleDigitKeyDown(index, e)}
-                      onPaste={(e) => handleDigitPaste(index, e)}
-                      style={digitBoxStyle}
-                    />
-                  ))}
-                </div>
+                {digits.map((digit, index) => (
+                  <input
+                    key={index}
+                    id={`otp-${index}`}
+                    aria-label={`Code digit ${index + 1}`}
+                    ref={(el) => {
+                      digitRefs.current[index] = el
+                    }}
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleDigitChange(index, e.target.value)}
+                    onKeyDown={(e) => handleDigitKeyDown(index, e)}
+                    onPaste={(e) => handleDigitPaste(index, e)}
+                    style={digitBoxStyle}
+                  />
+                ))}
               </div>
+              <p style={{ margin: '4px 0 0', font: '400 14px var(--font-body)', color: 'var(--text-muted)' }}>
+                Didn&rsquo;t get it?{' '}
+                <button
+                  type="button"
+                  onClick={() => sendCode({ preventDefault() {} } as FormEvent)}
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-subtle-2)', font: 'inherit' }}
+                >
+                  Resend code
+                </button>
+              </p>
               <Btn kind="primary" size="lg" label="Verify" />
-            </form>
-          )}
-          {error && (
-            <p role="alert" style={{ color: 'var(--comets)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
-              {error}
-            </p>
-          )}
-        </div>
+            </div>
+          </form>
+        )}
+        {error && (
+          <p role="alert" style={{ color: 'var(--comets)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
+            {error}
+          </p>
+        )}
       </div>
     </div>
   )

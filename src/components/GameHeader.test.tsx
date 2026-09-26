@@ -15,4 +15,11 @@ describe('GameHeader', () => {
     render(<GameHeader round={1} total={1} room="TQXK" onMenu={vi.fn()} />)
     expect(screen.getByText(/TQXK/)).toBeInTheDocument()
   })
+
+  it('calls onLeave when the leave button is tapped', () => {
+    const onLeave = vi.fn()
+    render(<GameHeader round={1} total={3} onLeave={onLeave} />)
+    fireEvent.click(screen.getByRole('button', { name: /leave game/i }))
+    expect(onLeave).toHaveBeenCalled()
+  })
 })

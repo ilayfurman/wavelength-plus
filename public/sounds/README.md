@@ -1,5 +1,5 @@
-Replace these with real short (<2s) sound clips before shipping:
-airhorn.mp3, drumroll.mp3, applause.mp3, sad-trombone.mp3, boo.mp3,
-crickets.mp3, gasp.mp3, tada.mp3
+Soundboard clips used by src/features/noises/Soundboard.tsx:
+clapping.mp3, fart.mp3, woohoo.mp3, fortnight.mp3, vine-boom.mp3,
+anime-wow.mp3, bruh.mp3, faa.mp3, confetti-pop.mp3, emotional-damage.mp3
 
-Any royalty-free SFX pack works (e.g. freesound.org, CC0 sources).
+All trimmed to a couple seconds and re-encoded at 128kbps.

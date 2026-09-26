@@ -3,17 +3,37 @@ import type { CSSProperties } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 
 const SOUNDS = [
-  { key: 'airhorn', emoji: '📯', label: 'Airhorn' },
-  { key: 'drumroll', emoji: '🥁', label: 'Drumroll' },
-  { key: 'applause', emoji: '👏', label: 'Applause' },
-  { key: 'sad-trombone', emoji: '🎺', label: 'Trombone' },
-  { key: 'boo', emoji: '👎', label: 'Boo' },
-  { key: 'crickets', emoji: '🦗', label: 'Crickets' },
-  { key: 'gasp', emoji: '😱', label: 'Gasp' },
-  { key: 'tada', emoji: '🎉', label: 'Ta-da' },
+  { key: 'clapping', emoji: '👏', label: 'Applause' },
+  { key: 'fart', emoji: '💨', label: 'Fart' },
+  { key: 'woohoo', emoji: '🙌', label: 'Woohoo' },
+  { key: 'fortnight', emoji: '🕺', label: 'Fortnite' },
+  { key: 'vine-boom', emoji: '💥', label: 'Vine Boom' },
+  { key: 'anime-wow', emoji: '😲', label: 'Anime Wow' },
+  { key: 'bruh', emoji: '💀', label: 'Bruh' },
+  { key: 'faa', emoji: '😩', label: 'Faaa' },
+  { key: 'confetti-pop', emoji: '🎉', label: 'Confetti' },
+  { key: 'emotional-damage', emoji: '💔', label: 'Emotional Damage' },
 ] as const
 
 const GLOW_MS = 450
+const POP_MS = 1130 // ~1700ms base sequence at 1.5x speed
+
+// The pop is deliberately NOT anchored to the button that was clicked — it's
+// a big, shared moment in the middle of everyone's screen (that's the point:
+// every player in the party sees it, not just whoever's looking at the
+// soundboard row), fading in, drifting up, then fading out again.
+function popStyle(offsetX: number): CSSProperties {
+  return {
+    position: 'fixed',
+    top: '42%',
+    left: `calc(50% + ${offsetX}px)`,
+    fontSize: '40px',
+    zIndex: 60,
+    pointerEvents: 'none',
+    filter: 'drop-shadow(0 4px 18px rgba(0,0,0,.35))',
+    animation: `sound-pop-float ${POP_MS}ms ease-out forwards`,
+  }
+}
 
 const rowStyle: CSSProperties = {
   position: 'relative',
@@ -100,14 +120,19 @@ export function Soundboard({
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const audioRefs = useRef<Record<string, HTMLAudioElement>>({})
   const glowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const popIdRef = useRef(0)
   const [hitSound, setHitSound] = useState<string | null>(null)
+  const [pops, setPops] = useState<{ id: number; emoji: string; offsetX: number }[]>([])
 
   useEffect(() => {
+    // self: false (the default) so the sender doesn't get their own click
+    // echoed back — playLocalEffect below already fires for them
+    // immediately, without waiting on a round trip.
     const channel = supabase
-      .channel(`noises:${partyId}`)
+      .channel(`noises:${partyId}`, { config: { broadcast: { self: false } } })
       .on('broadcast', { event: 'noise' }, (payload) => {
         const sound = payload.payload.sound as string
-        audioRefs.current[sound]?.play().catch(() => {})
+        playLocalEffect(sound)
       })
       .subscribe()
     channelRef.current = channel
@@ -126,12 +151,37 @@ export function Soundboard({
   const isMuted = mutedUntil !== null && new Date(mutedUntil).getTime() > Date.now()
   const remainingSeconds = secondsRemaining(mutedUntil)
 
-  function playSound(sound: string) {
-    if (isMuted || !noisesEnabled) return
-    channelRef.current?.send({ type: 'broadcast', event: 'noise', payload: { sound } })
+  /** Plays + animates for THIS client only — called directly for the player
+   * who clicked (so it's instant, not waiting on their own broadcast to come
+   * back) and again whenever a broadcast from someone else arrives, so every
+   * player in the party sees/hears the same thing. */
+  function playLocalEffect(sound: string) {
+    const audio = audioRefs.current[sound]
+    if (audio) {
+      // Rewinding before play (rather than relying on the previous playback
+      // finishing) is what lets spamming the same button restart it every
+      // time instead of the repeat clicks doing nothing until it ends.
+      audio.currentTime = 0
+      // jsdom's play() returns undefined rather than a Promise in tests.
+      audio.play()?.catch(() => {})
+    }
     setHitSound(sound)
     if (glowTimeoutRef.current) clearTimeout(glowTimeoutRef.current)
     glowTimeoutRef.current = setTimeout(() => setHitSound(null), GLOW_MS)
+    const emoji = SOUNDS.find((s) => s.key === sound)?.emoji ?? ''
+    const id = ++popIdRef.current
+    // Random horizontal jitter so spamming the same sound (or several
+    // players triggering different ones close together) fans out instead of
+    // every pop stacking exactly on top of the last.
+    const offsetX = Math.round((Math.random() - 0.5) * 140)
+    setPops((prev) => [...prev, { id, emoji, offsetX }])
+    setTimeout(() => setPops((prev) => prev.filter((p) => p.id !== id)), POP_MS)
+  }
+
+  function playSound(sound: string) {
+    if (isMuted || !noisesEnabled) return
+    channelRef.current?.send({ type: 'broadcast', event: 'noise', payload: { sound } })
+    playLocalEffect(sound)
   }
 
   return (
@@ -152,6 +202,11 @@ export function Soundboard({
       {SOUNDS.map(({ key }) => (
         <audio key={key} ref={(el) => { if (el) audioRefs.current[key] = el }} src={`/sounds/${key}.mp3`} preload="auto" />
       ))}
+      {pops.map((p) => (
+        <span key={p.id} style={popStyle(p.offsetX)}>
+          {p.emoji}
+        </span>
+      ))}
       {noisesEnabled && isMuted && (
         <div style={mutedOverlayWrapStyle}>
           <span style={mutedOverlayBadgeStyle}>
@@ -159,7 +214,7 @@ export function Soundboard({
           </span>
         </div>
       )}
-      {isHost && (
+      {isHost && noisesEnabled && (
         <div>
           {players
             .filter((p) => p.id !== myPlayerId)

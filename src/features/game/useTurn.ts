@@ -14,6 +14,18 @@ export type Turn = {
   status: 'clue' | 'guessing' | 'betting' | 'revealed'
 }
 
+// `turns` deliberately has no SELECT RLS policy on the base table — that's
+// what makes turns_view's column redaction (hiding target_position from
+// non-psychic players) actually secure. But Supabase Realtime authorizes
+// postgres_changes against the base table's RLS, not the view, so it can
+// never deliver change events here — and even if it could, the raw payload
+// would include the hidden target_position for every subscriber, which is
+// exactly what turns_view exists to prevent. So this polls the safe view
+// instead of subscribing to postgres_changes. 600ms is tight enough to feel
+// close to instant for people playing in the same room, without the
+// complexity of a proper broadcast-from-database setup.
+const POLL_INTERVAL_MS = 600
+
 export function useTurn(turnId: string) {
   const [turn, setTurn] = useState<Turn | null>(null)
 
@@ -24,14 +36,9 @@ export function useTurn(turnId: string) {
 
   useEffect(() => {
     reload()
-    const channel = supabase
-      .channel(`turn:${turnId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'turns', filter: `id=eq.${turnId}` }, () => {
-        reload()
-      })
-      .subscribe()
+    const interval = setInterval(reload, POLL_INTERVAL_MS)
     return () => {
-      supabase.removeChannel(channel)
+      clearInterval(interval)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turnId])

@@ -1,11 +1,11 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Lobby } from './Lobby'
 import { supabase } from '../../lib/supabaseClient'
 
-const partyRow = { team_size: 2, rounds: 3, team_mode: 'random', noises_enabled: true }
-const playersData = [{ id: 'p1', display_name: 'Alex', avatar: '🌮', team_id: null }]
-const teamsData: { id: string; name: string }[] = []
+const partyRow = { num_teams: 2, rounds: 3, team_mode: 'random', noises_enabled: true, has_started: false }
+let playersData: { id: string; display_name: string; avatar: string; team_id: string | null; confirmed_rematch: boolean }[] = []
+let teamsData: { id: string; name: string }[] = []
 
 function makeChain(resolveValue: unknown, arrayValue?: unknown) {
   const chain: Record<string, unknown> = {}
@@ -37,10 +37,16 @@ vi.mock('../../lib/supabaseClient', () => ({
     channel: vi.fn(() => ({
       on: vi.fn().mockReturnThis(),
       subscribe: vi.fn().mockReturnThis(),
+      send: vi.fn(),
     })),
     removeChannel: vi.fn(),
   },
 }))
+
+beforeEach(() => {
+  playersData = [{ id: 'p1', display_name: 'Alex', avatar: '🌮', team_id: null, confirmed_rematch: false }]
+  teamsData = []
+})
 
 describe('Lobby', () => {
   it('shows the room code and lists joined players', async () => {
@@ -49,13 +55,45 @@ describe('Lobby', () => {
     await waitFor(() => expect(screen.getByText('Alex')).toBeInTheDocument())
   })
 
-  it('calls shuffle_teams when the host clicks Reshuffle', async () => {
+  // These exercise the multi-team flow, which needs at least 4 players —
+  // below that, forcedSingleTeam skips the whole Random/Pick/Shuffle UI
+  // entirely (see Lobby.tsx), so a single-player default wouldn't show it.
+  const fourPlayers = [
+    { id: 'p1', display_name: 'Alex', avatar: '🌮', team_id: null, confirmed_rematch: false },
+    { id: 'p2', display_name: 'Sam', avatar: '🦊', team_id: null, confirmed_rematch: false },
+    { id: 'p3', display_name: 'Jo', avatar: '🐝', team_id: null, confirmed_rematch: false },
+    { id: 'p4', display_name: 'Kai', avatar: '🐙', team_id: null, confirmed_rematch: false },
+  ]
+
+  it('shows "Shuffle teams" instead of "Start game" in Random mode before any teams exist', async () => {
+    playersData = fourPlayers
+    render(<Lobby partyId="party-1" roomCode="ABCD" isHost={true} onStartGame={vi.fn()} />)
+    expect(await screen.findByRole('button', { name: /^shuffle teams$/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^start game$/i })).not.toBeInTheDocument()
+  })
+
+  it('calls shuffle_teams when the host clicks "Shuffle teams"', async () => {
+    playersData = fourPlayers
+    render(<Lobby partyId="party-1" roomCode="ABCD" isHost={true} onStartGame={vi.fn()} />)
+    fireEvent.click(await screen.findByRole('button', { name: /^shuffle teams$/i }))
+    await waitFor(() => expect(supabase.rpc).toHaveBeenCalledWith('shuffle_teams', { p_party_id: 'party-1' }))
+  })
+
+  it('calls shuffle_teams when the host clicks Reshuffle once teams exist', async () => {
+    teamsData = [{ id: 't1', name: 'Pink Team' }, { id: 't2', name: 'Sky Team' }]
+    playersData = [
+      { id: 'p1', display_name: 'Alex', avatar: '🌮', team_id: 't1', confirmed_rematch: false },
+      { id: 'p2', display_name: 'Sam', avatar: '🦊', team_id: 't1', confirmed_rematch: false },
+      { id: 'p3', display_name: 'Jo', avatar: '🐝', team_id: 't2', confirmed_rematch: false },
+      { id: 'p4', display_name: 'Kai', avatar: '🐙', team_id: 't2', confirmed_rematch: false },
+    ]
     render(<Lobby partyId="party-1" roomCode="ABCD" isHost={true} onStartGame={vi.fn()} />)
     fireEvent.click(await screen.findByRole('button', { name: /reshuffle/i }))
     expect(supabase.rpc).toHaveBeenCalledWith('shuffle_teams', { p_party_id: 'party-1' })
   })
 
-  it('calls set_party_settings with p_team_mode when the host picks a team mode', async () => {
+  it('calls set_party_settings and create_pick_teams when the host picks Pick mode', async () => {
+    playersData = fourPlayers
     render(<Lobby partyId="party-1" roomCode="ABCD" isHost={true} onStartGame={vi.fn()} />)
     const pickButton = await screen.findByRole('radio', { name: /pick/i })
     fireEvent.click(pickButton)
@@ -65,6 +103,7 @@ describe('Lobby', () => {
         expect.objectContaining({ p_party_id: 'party-1', p_team_mode: 'manual' }),
       ),
     )
+    expect(supabase.rpc).toHaveBeenCalledWith('create_pick_teams', { p_party_id: 'party-1' })
   })
 
   it('calls set_party_settings with p_noises_enabled when the host toggles noises', async () => {
@@ -80,27 +119,32 @@ describe('Lobby', () => {
   })
 
   it('shows an error message when onStartGame rejects', async () => {
+    teamsData = [{ id: 't1', name: 'Pink Team' }]
+    playersData = [
+      { id: 'p1', display_name: 'Alex', avatar: '🌮', team_id: 't1', confirmed_rematch: false },
+      { id: 'p2', display_name: 'Sam', avatar: '🦊', team_id: 't1', confirmed_rematch: false },
+    ]
     const onStartGame = vi.fn().mockRejectedValue(new Error('No teams assigned yet'))
     render(<Lobby partyId="party-1" roomCode="ABCD" isHost={true} onStartGame={onStartGame} />)
     fireEvent.click(await screen.findByRole('button', { name: /^start game$/i }))
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('No teams assigned yet'))
   })
 
-  it('calls assign_manual_team with the viewer own player id when joining a team in Pick mode', async () => {
+  it('calls assign_manual_team with the viewer own player id when joining a pre-made color team in Pick mode', async () => {
+    partyRow.team_mode = 'manual'
+    teamsData = [{ id: 't1', name: 'Pink Team' }, { id: 't2', name: 'Sky Team' }]
+    playersData = fourPlayers
     render(<Lobby partyId="party-1" roomCode="ABCD" isHost={true} onStartGame={vi.fn()} />)
-    const pickButton = await screen.findByRole('radio', { name: /pick/i })
-    fireEvent.click(pickButton)
 
-    const input = await screen.findByLabelText('New team name')
-    fireEvent.change(input, { target: { value: 'Team Rocket' } })
-    fireEvent.click(screen.getByRole('button', { name: /create \/ join team/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /\+ join pink team/i }))
 
     await waitFor(() =>
       expect(supabase.rpc).toHaveBeenCalledWith('assign_manual_team', {
         p_party_id: 'party-1',
         p_player_id: 'p1',
-        p_team_name: 'Team Rocket',
+        p_team_name: 'Pink Team',
       }),
     )
+    partyRow.team_mode = 'random'
   })
 })

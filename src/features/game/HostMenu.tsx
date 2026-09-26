@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { supabase } from '../../lib/supabaseClient'
-import { Btn } from '../../components/Btn'
 
 type PartySettings = {
-  team_size: number
+  num_teams: number
   rounds: number
   team_mode: 'random' | 'manual'
   noises_enabled: boolean
@@ -27,17 +26,27 @@ const sheetStyle: CSSProperties = {
   maxWidth: 480,
   maxHeight: '80vh',
   overflowY: 'auto',
-  background: 'var(--sheet)',
-  borderTopLeftRadius: 24,
-  borderTopRightRadius: 24,
-  padding: '20px 20px 28px',
+  background: 'linear-gradient(180deg,#221B4F,#130F30)',
+  borderTop: '1px solid rgba(200,180,255,.2)',
+  borderTopLeftRadius: 30,
+  borderTopRightRadius: 30,
+  padding: '10px 18px 34px',
   boxSizing: 'border-box',
   display: 'flex',
   flexDirection: 'column',
-  gap: 18,
+  gap: 6,
   fontFamily: 'Rubik, system-ui, sans-serif',
   color: '#F4F2FB',
   transition: 'transform .2s ease',
+}
+
+const dragHandleStyle: CSSProperties = {
+  width: 40,
+  height: 5,
+  borderRadius: 3,
+  background: 'rgba(255,255,255,.25)',
+  alignSelf: 'center',
+  marginBottom: 8,
 }
 
 const headerRowStyle: CSSProperties = {
@@ -64,20 +73,6 @@ const errorTextStyle: CSSProperties = {
   color: '#FF8A8A',
   fontSize: 13,
   fontWeight: 500,
-}
-
-const sectionStyle: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 10,
-}
-
-const sectionLabelStyle: CSSProperties = {
-  color: 'var(--text-muted, #93A2BF)',
-  fontSize: 13,
-  fontWeight: 600,
-  textTransform: 'uppercase',
-  letterSpacing: '0.04em',
 }
 
 const rowStyle: CSSProperties = {
@@ -146,7 +141,6 @@ export function HostMenu({
   open,
   onClose,
   partyId,
-  currentPsychicName,
   players,
   myPlayerId,
   onMuteSuccess,
@@ -154,19 +148,16 @@ export function HostMenu({
   open: boolean
   onClose: () => void
   partyId: string
-  currentPsychicName: string
   players: Player[]
   myPlayerId: string
   onMuteSuccess?: () => void
 }) {
   const [settings, setSettings] = useState<PartySettings | null>(null)
-  const [confirmEndGame, setConfirmEndGame] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [mutingIds, setMutingIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (!open) {
-      setConfirmEndGame(false)
       setErrorMessage(null)
       return
     }
@@ -174,7 +165,7 @@ export function HostMenu({
     async function loadSettings() {
       const { data } = await supabase
         .from('parties')
-        .select('team_size, rounds, team_mode, noises_enabled')
+        .select('num_teams, rounds, team_mode, noises_enabled')
         .eq('id', partyId)
         .single()
       if (!cancelled && data) setSettings(data as PartySettings)
@@ -220,29 +211,10 @@ export function HostMenu({
     onMuteSuccess?.()
   }
 
-  async function forceSkipTurn() {
-    setErrorMessage(null)
-    const { error } = await supabase.rpc('skip_turn', { p_party_id: partyId })
-    if (error) setErrorMessage('Could not skip the turn. Try again.')
-  }
-
-  async function endGame() {
-    if (!confirmEndGame) {
-      setConfirmEndGame(true)
-      return
-    }
-    setErrorMessage(null)
-    const { error } = await supabase.rpc('end_game', { p_party_id: partyId })
-    if (error) {
-      setErrorMessage('Could not end the game. Try again.')
-      return
-    }
-    setConfirmEndGame(false)
-  }
-
   return (
     <div style={overlayStyle} onClick={onClose}>
       <div style={sheetStyle} onClick={(e) => e.stopPropagation()}>
+        <div style={dragHandleStyle} />
         <div style={headerRowStyle}>
           <span style={titleStyle}>Host menu</span>
           <button type="button" style={closeButtonStyle} aria-label="Close menu" onClick={onClose}>
@@ -252,58 +224,41 @@ export function HostMenu({
 
         {errorMessage && <span role="alert" style={errorTextStyle}>{errorMessage}</span>}
 
-        <div style={sectionStyle}>
-          <div style={rowStyle}>
-            <span style={sectionLabelStyle}>Noises</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={settings?.noises_enabled ?? false}
-              aria-label="Toggle noises"
-              style={switchTrackStyle(settings?.noises_enabled ?? false)}
-              onClick={toggleNoises}
-              disabled={!settings}
-            >
-              <span style={switchDotStyle(settings?.noises_enabled ?? false)} />
-            </button>
-          </div>
+        <div style={{ ...rowStyle, height: 54 }}>
+          <span style={{ font: '700 20px Fredoka, sans-serif' }}>Noises</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={settings?.noises_enabled ?? false}
+            aria-label="Toggle noises"
+            style={switchTrackStyle(settings?.noises_enabled ?? false)}
+            onClick={toggleNoises}
+            disabled={!settings}
+          >
+            <span style={switchDotStyle(settings?.noises_enabled ?? false)} />
+          </button>
         </div>
+        <p style={{ margin: '0 0 6px', fontSize: 13, color: 'var(--text-muted, #A9A3C9)' }}>
+          Tap a player to silence their soundboard for 30s.
+        </p>
 
-        <div style={sectionStyle}>
-          <span style={sectionLabelStyle}>Players</span>
-          <div style={playerListStyle}>
-            {players
-              .filter((p) => p.id !== myPlayerId)
-              .map((p) => (
-                <div key={p.id} style={playerRowStyle}>
-                  <span>{p.display_name}</span>
-                  <button
-                    type="button"
-                    style={muteButtonStyle}
-                    aria-label={`Mute ${p.display_name}`}
-                    onClick={() => mutePlayer(p.id)}
-                    disabled={mutingIds.has(p.id)}
-                  >
-                    Mute
-                  </button>
-                </div>
-              ))}
-          </div>
-        </div>
-
-        <div style={sectionStyle}>
-          <Btn
-            kind="secondary"
-            size="md"
-            label={`Force-skip ${currentPsychicName}'s turn`}
-            onClick={forceSkipTurn}
-          />
-          <Btn
-            kind={confirmEndGame ? 'primary' : 'ghost'}
-            size="md"
-            label={confirmEndGame ? 'Tap again to confirm' : 'End game for everyone'}
-            onClick={endGame}
-          />
+        <div style={playerListStyle}>
+          {players
+            .filter((p) => p.id !== myPlayerId)
+            .map((p) => (
+              <div key={p.id} style={playerRowStyle}>
+                <span>{p.display_name}</span>
+                <button
+                  type="button"
+                  style={muteButtonStyle}
+                  aria-label={`Mute ${p.display_name}`}
+                  onClick={() => mutePlayer(p.id)}
+                  disabled={mutingIds.has(p.id)}
+                >
+                  Mute
+                </button>
+              </div>
+            ))}
         </div>
       </div>
     </div>

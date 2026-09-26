@@ -4,41 +4,60 @@ import { Starfield } from '../../components/Starfield'
 import { Btn } from '../../components/Btn'
 import { parsePasteLines } from './pasteImport'
 import { AiPromptSheet } from './AiPromptSheet'
+import { errorMessage } from '../../lib/errorMessage'
 
+type Pack = { id: string; name: string; share_code: string }
 type Spectrum = { id: string; left_label: string; right_label: string }
-type Mode = 'one' | 'paste'
+type Mode = 'one' | 'paste' | 'replace'
 
 const inputStyle = {
-  width: '100%',
-  height: 52,
-  padding: '0 16px',
-  borderRadius: 14,
+  minWidth: 0,
+  height: 50,
+  borderRadius: 999,
   background: 'var(--input-bg)',
   border: '1px solid var(--input-border)',
+  padding: '0 16px',
   color: 'var(--text)',
   fontFamily: 'var(--font-body)',
   fontSize: 16,
+  outline: 'none',
   boxSizing: 'border-box' as const,
 }
 
 const cardStyle = {
+  borderRadius: 22,
+  padding: 14,
+  background: 'linear-gradient(180deg, rgba(52,40,110,.55), rgba(24,18,56,.6))',
+  border: '1px solid rgba(200,180,255,.12)',
   display: 'flex',
   flexDirection: 'column' as const,
-  gap: 16,
-  padding: 24,
-  borderRadius: 22,
-  border: '1px solid var(--surface-border)',
-  background: 'var(--surface)',
+  gap: 10,
   boxSizing: 'border-box' as const,
 }
 
-const statusLabel: Record<'ok' | 'needs-format' | 'duplicate', string> = {
-  ok: '✓',
-  'needs-format': 'Needs Left | Right',
-  duplicate: 'Already in pack',
+const rowTagStyle: Record<'ok' | 'needs-format' | 'duplicate', { color: string; text: string }> = {
+  ok: { color: 'var(--novas, #5BD6FF)', text: 'Ready' },
+  'needs-format': { color: 'var(--comets, #FF6FA3)', text: 'Needs Left | Right' },
+  duplicate: { color: 'var(--text-muted)', text: 'Already in pack' },
+}
+
+function segStyle(active: boolean): React.CSSProperties {
+  return {
+    height: 38,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+    background: active ? '#F3ECDD' : 'transparent',
+    color: active ? '#1A1233' : 'var(--text-muted)',
+    font: '600 14px/1 var(--font-body)',
+    cursor: 'pointer',
+    border: 'none',
+  }
 }
 
 export function PackEditor({ packId, onBack }: { packId: string; onBack?: () => void }) {
+  const [pack, setPack] = useState<Pack | null>(null)
   const [spectrums, setSpectrums] = useState<Spectrum[]>([])
   const [left, setLeft] = useState('')
   const [right, setRight] = useState('')
@@ -46,10 +65,21 @@ export function PackEditor({ packId, onBack }: { packId: string; onBack?: () => 
   const [pasteText, setPasteText] = useState('')
   const [importing, setImporting] = useState(false)
   const [showAiSheet, setShowAiSheet] = useState(false)
+  const [replaceText, setReplaceText] = useState('')
+  const [replacing, setReplacing] = useState(false)
+  const [replaceResult, setReplaceResult] = useState<{ removed: number; added: number; skipped: number } | null>(null)
+  const [replaceError, setReplaceError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   async function load() {
-    const { data } = await supabase.from('spectrums').select('id, left_label, right_label').eq('pack_id', packId)
-    setSpectrums((data as Spectrum[]) ?? [])
+    const [{ data: packRows }, { data }] = await Promise.all([
+      supabase.from('packs').select('id, name, share_code').eq('id', packId),
+      supabase.from('spectrums').select('id, left_label, right_label').eq('pack_id', packId),
+    ])
+    setPack((packRows as Pack[])?.[0] ?? null)
+    // spectrums has no created_at column; reverse the natural insertion order
+    // (Postgres returns rows roughly in that order) to approximate "newest first".
+    setSpectrums(((data as Spectrum[]) ?? []).slice().reverse())
   }
 
   useEffect(() => {
@@ -104,6 +134,50 @@ export function PackEditor({ packId, onBack }: { packId: string; onBack?: () => 
     }
   }
 
+  const pasteCta = parsed.valid.length > 0 ? `Add ${parsed.valid.length} spectrums` : 'Add spectrums'
+
+  // Same "Left | Right" format the paste-import expects, so a round trip
+  // (export → edit with an AI → paste back for a full replace) just works.
+  const exportText = useMemo(() => spectrums.map((s) => `${s.left_label} | ${s.right_label}`).join('\n'), [spectrums])
+
+  async function copyExport() {
+    try {
+      await navigator.clipboard.writeText(exportText)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard access can be denied by the browser; the list is already
+      // visible/selectable in the export view so the user can copy manually.
+    }
+  }
+
+  // Empty `existing` here (not `spectrums`) — a full replace treats every
+  // valid line as wanted, including ones that happen to already be in the
+  // pack; only dedupes against itself within the pasted text.
+  const parsedReplace = useMemo(() => parsePasteLines(replaceText, []), [replaceText])
+
+  async function runReplace() {
+    setReplacing(true)
+    setReplaceError(null)
+    setReplaceResult(null)
+    try {
+      const { data, error } = await supabase
+        .rpc('replace_pack_spectrums', {
+          p_pack_id: packId,
+          p_pairs: parsedReplace.valid.map((v) => ({ left: v.left, right: v.right })),
+        })
+        .single()
+      if (error) throw error
+      const result = data as { removed: number; added: number; skipped_in_use: number }
+      setReplaceResult({ removed: result.removed, added: result.added, skipped: result.skipped_in_use })
+      await load()
+    } catch (err) {
+      setReplaceError(errorMessage(err, 'Could not replace the list. Try again.'))
+    } finally {
+      setReplacing(false)
+    }
+  }
+
   return (
     <div style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
       <Starfield />
@@ -113,117 +187,285 @@ export function PackEditor({ packId, onBack }: { packId: string; onBack?: () => 
           minHeight: '100vh',
           display: 'flex',
           flexDirection: 'column',
-          padding: '32px 20px',
+          padding: '32px 16px',
           boxSizing: 'border-box',
-          gap: 24,
-          maxWidth: 520,
+          gap: 12,
+          maxWidth: 480,
           margin: '0 auto',
         }}
       >
-        {onBack && <Btn kind="ghost" size="sm" label="← Back to packs" onClick={onBack} />}
-
-        <h2 style={{ margin: 0, color: 'var(--text)', fontFamily: 'var(--font-display)' }}>Pack editor</h2>
-
-        <div style={cardStyle}>
-          <h4 style={{ margin: 0, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
-            Spectrums ({spectrums.length})
-          </h4>
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {spectrums.map((s) => (
-              <li
-                key={s.id}
-                style={{
-                  padding: '12px 16px',
-                  borderRadius: 14,
-                  background: 'rgba(255,255,255,.04)',
-                  color: 'var(--text)',
-                  fontFamily: 'var(--font-body)',
-                }}
-              >
-                {s.left_label} ↔ {s.right_label}
-              </li>
-            ))}
-          </ul>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {onBack && (
+            <button
+              onClick={onBack}
+              aria-label="Back"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,.06)',
+                border: '1px solid rgba(200,180,255,.16)',
+                color: 'var(--text)',
+                fontSize: 22,
+                lineHeight: 1,
+                cursor: 'pointer',
+                flex: 'none',
+              }}
+            >
+              ‹
+            </button>
+          )}
+          <span style={{ flex: 1, font: '700 24px/1 var(--font-body)', color: 'var(--text)' }}>
+            {pack?.name ?? 'Pack editor'}
+          </span>
+          {pack?.share_code && (
+            <span
+              style={{
+                padding: '8px 12px',
+                borderRadius: 999,
+                background: 'rgba(255,209,102,.12)',
+                border: '1px solid rgba(255,209,102,.4)',
+                font: '700 13px/1 var(--font-mono)',
+                letterSpacing: '.12em',
+                color: 'var(--gold)',
+              }}
+            >
+              {pack.share_code}
+            </span>
+          )}
         </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Btn kind={mode === 'one' ? 'primary' : 'secondary'} size="sm" label="Add one" onClick={() => setMode('one')} />
-          <Btn kind={mode === 'paste' ? 'primary' : 'secondary'} size="sm" label="Paste a list" onClick={() => setMode('paste')} />
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr',
+            padding: 4,
+            borderRadius: 999,
+            background: 'rgba(8,6,24,.6)',
+            border: '1px solid rgba(200,180,255,.12)',
+          }}
+        >
+          <button style={segStyle(mode === 'one')} onClick={() => setMode('one')}>
+            One at a time
+          </button>
+          <button style={segStyle(mode === 'paste')} onClick={() => setMode('paste')}>
+            Paste a list
+          </button>
+          <button
+            style={segStyle(mode === 'replace')}
+            onClick={() => {
+              setMode('replace')
+              setReplaceText(exportText)
+              setReplaceResult(null)
+              setReplaceError(null)
+            }}
+          >
+            Full replace
+          </button>
         </div>
 
         {mode === 'one' && (
           <div style={cardStyle}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <label htmlFor="left-label" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
-                Left label
-              </label>
-              <input id="left-label" value={left} onChange={(e) => setLeft(e.target.value)} style={inputStyle} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', gap: 8, alignItems: 'center' }}>
+              <input aria-label="Left label" placeholder="Left" value={left} onChange={(e) => setLeft(e.target.value)} style={inputStyle} />
+              <span style={{ font: '400 20px/1 var(--font-body)', color: 'var(--text-muted)' }}>⟷</span>
+              <input aria-label="Right label" placeholder="Right" value={right} onChange={(e) => setRight(e.target.value)} style={inputStyle} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <label htmlFor="right-label" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
-                Right label
-              </label>
-              <input id="right-label" value={right} onChange={(e) => setRight(e.target.value)} style={inputStyle} />
-            </div>
-            <Btn kind="primary" size="md" label="Add spectrum" onClick={addSpectrum} />
+            <Btn kind="secondary" size="sm" label="Add spectrum" onClick={addSpectrum} disabled={!left.trim() || !right.trim()} />
           </div>
         )}
 
         {mode === 'paste' && (
           <div style={cardStyle}>
-            <label htmlFor="paste-list" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
-              Paste a list (one card per line: Left | Right)
-            </label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
+              <span style={{ font: '600 11px/1 var(--font-body)', letterSpacing: '.14em', color: 'var(--text-muted)' }}>
+                ONE PER LINE · <span style={{ color: '#F3ECDD', fontFamily: 'var(--font-mono)', letterSpacing: '.04em' }}>Left | Right</span>
+              </span>
+              <button
+                onClick={() => setPasteText('')}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', font: '500 13px var(--font-body)', cursor: 'pointer', padding: 4 }}
+              >
+                Clear
+              </button>
+            </div>
             <textarea
-              id="paste-list"
+              aria-label="Paste a list"
               value={pasteText}
               onChange={(e) => setPasteText(e.target.value)}
-              rows={8}
-              placeholder={'Awful beer | Great beer\nCold vs Hot'}
+              placeholder="Paste your list here…"
               style={{
-                ...inputStyle,
-                height: 'auto',
-                padding: 16,
+                height: 150,
+                resize: 'none',
+                borderRadius: 16,
+                background: 'var(--input-bg)',
+                border: '1px solid var(--input-border)',
+                padding: '12px 14px',
+                color: 'var(--text)',
                 fontFamily: 'var(--font-mono)',
-                resize: 'vertical' as const,
+                fontSize: 14,
+                lineHeight: 1.55,
+                outline: 'none',
+                boxSizing: 'border-box',
+                width: '100%',
               }}
             />
+            <Btn kind="accent" size="sm" label="Get an AI prompt for this format" onClick={() => setShowAiSheet(true)} />
 
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '0 4px' }}>
+              <span style={{ font: '600 15px/1 var(--font-body)', color: 'var(--text)' }}>Preview</span>
+              <span style={{ font: '400 12px/1 var(--font-body)', color: 'var(--text-muted)' }}>
+                {parsed.valid.length} ready · {parsed.results.length - parsed.valid.length} need attention
+              </span>
+            </div>
             {pasteText.trim().length > 0 && (
-              <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {parsed.results.map((r, i) => (
-                  <li
-                    key={i}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      gap: 12,
-                      padding: '8px 12px',
-                      borderRadius: 10,
-                      background: 'rgba(255,255,255,.03)',
-                      color: r.status === 'ok' ? 'var(--text)' : 'var(--text-subtle)',
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 13,
-                    }}
-                  >
-                    <span>{r.line}</span>
-                    <span>{statusLabel[r.status]}</span>
-                  </li>
-                ))}
-              </ul>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
+                {parsed.results.map((r, i) => {
+                  const tag = rowTagStyle[r.status]
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        minHeight: 40,
+                        padding: '0 14px',
+                        borderRadius: 999,
+                        background: 'rgba(255,255,255,.04)',
+                        border: '1px solid rgba(200,180,255,.08)',
+                        opacity: r.status === 'ok' ? 1 : 0.7,
+                      }}
+                    >
+                      <span
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          font: '500 14px/1 var(--font-body)',
+                          color: 'var(--text)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {r.line}
+                      </span>
+                      <span style={{ flex: 'none', font: '600 11px/1 var(--font-body)', color: tag.color, whiteSpace: 'nowrap' }}>
+                        {tag.text}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
             )}
 
+            <Btn kind="primary" size="lg" label={pasteCta} disabled={parsed.valid.length === 0 || importing} onClick={importPasted} />
+          </div>
+        )}
+
+        {mode === 'replace' && (
+          <div style={cardStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
+              <span style={{ font: '600 11px/1 var(--font-body)', letterSpacing: '.14em', color: 'var(--text-muted)' }}>
+                FULL LIST · <span style={{ color: '#F3ECDD', fontFamily: 'var(--font-mono)', letterSpacing: '.04em' }}>Left | Right</span>
+              </span>
+              <button
+                onClick={copyExport}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', font: '500 13px var(--font-body)', cursor: 'pointer', padding: 4 }}
+              >
+                {copied ? 'Copied!' : 'Copy list'}
+              </button>
+            </div>
+            <p style={{ margin: '0 4px', font: '400 13px/1.4 var(--font-body)', color: 'var(--text-muted)' }}>
+              Pre-filled with what's in the pack now — edit it directly, or copy it out, hand it to an AI with what you want changed, and paste the result back. Replacing removes anything not in this list and adds anything new.
+            </p>
+            <textarea
+              aria-label="Full pack list"
+              value={replaceText}
+              onChange={(e) => {
+                setReplaceText(e.target.value)
+                setReplaceResult(null)
+              }}
+              style={{
+                height: 220,
+                resize: 'none',
+                borderRadius: 16,
+                background: 'var(--input-bg)',
+                border: '1px solid var(--input-border)',
+                padding: '12px 14px',
+                color: 'var(--text)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 14,
+                lineHeight: 1.55,
+                outline: 'none',
+                boxSizing: 'border-box',
+                width: '100%',
+              }}
+            />
+            <span style={{ font: '400 12px/1 var(--font-body)', color: 'var(--text-muted)', padding: '0 4px' }}>
+              {parsedReplace.valid.length} valid line{parsedReplace.valid.length === 1 ? '' : 's'}
+              {parsedReplace.results.length - parsedReplace.valid.length > 0 &&
+                ` · ${parsedReplace.results.length - parsedReplace.valid.length} need${parsedReplace.results.length - parsedReplace.valid.length === 1 ? 's' : ''} attention`}
+            </span>
+            {replaceError && (
+              <span role="alert" style={{ color: 'var(--comets)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                {replaceError}
+              </span>
+            )}
+            {replaceResult && (
+              <span style={{ font: '500 13px var(--font-body)', color: 'var(--novas, #5BD6FF)' }}>
+                Added {replaceResult.added}, removed {replaceResult.removed}
+                {replaceResult.skipped > 0 && ` (kept ${replaceResult.skipped} that have already been played in a game and can't be removed)`}.
+              </span>
+            )}
             <Btn
               kind="primary"
-              size="md"
-              label={`Add ${parsed.valid.length} spectrums`}
-              disabled={parsed.valid.length === 0 || importing}
-              onClick={importPasted}
+              size="lg"
+              label={replacing ? 'Replacing…' : 'Replace pack with this list'}
+              disabled={replacing || parsedReplace.valid.length === 0}
+              onClick={runReplace}
             />
           </div>
         )}
 
-        <Btn kind="ghost" size="sm" label="Need ideas? Ask an AI" onClick={() => setShowAiSheet(true)} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '4px 4px 0' }}>
+          <span style={{ font: '600 16px/1 var(--font-body)', color: 'var(--text)' }}>{spectrums.length} cards</span>
+          <span style={{ font: '400 13px/1 var(--font-body)', color: 'var(--text-muted)' }}>Newest first</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {spectrums.map((s) => (
+            <div
+              key={s.id}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0,1fr) 56px minmax(0,1fr) 24px',
+                gap: 10,
+                alignItems: 'center',
+                minHeight: 50,
+                padding: '0 10px 0 16px',
+                borderRadius: 999,
+                background: 'rgba(255,255,255,.04)',
+                border: '1px solid rgba(200,180,255,.08)',
+              }}
+            >
+              <span style={{ font: '500 15px/1 var(--font-body)', color: 'var(--text)', textAlign: 'right' }}>{s.left_label}</span>
+              <span
+                style={{
+                  height: 8,
+                  borderRadius: 4,
+                  background:
+                    'linear-gradient(90deg,#2E2266 0 30%,#8C6BFF 30% 38%,#FF6FA3 38% 44%,#FFD166 44% 56%,#FF6FA3 56% 62%,#8C6BFF 62% 70%,#2E2266 70%)',
+                }}
+              />
+              <span style={{ font: '500 15px/1 var(--font-body)', color: 'var(--text)' }}>{s.right_label}</span>
+              <span
+                title="Removing cards is coming soon"
+                style={{ font: '400 18px/1 var(--font-body)', color: 'var(--text-subtle)', textAlign: 'center', cursor: 'not-allowed' }}
+              >
+                ×
+              </span>
+            </div>
+          ))}
+        </div>
 
         {showAiSheet && <AiPromptSheet onClose={() => setShowAiSheet(false)} />}
       </div>

@@ -2,7 +2,16 @@ import type { CSSProperties } from 'react'
 
 type Team = { id: string; name: string; score: number }
 
-const TEAM_COLORS = ['#FF6FA3', '#5BD6FF', '#8C6BFF', '#FFD166']
+export const TEAM_COLORS = ['#FF6FA3', '#5BD6FF', '#8C6BFF', '#FFD166']
+
+/** Same stable, id-sorted color assignment TeamScoreboard itself uses — for
+ * anything elsewhere (score-reveal popups, etc.) that needs a team's color
+ * to match what's on screen here. */
+export function colorForTeam(teams: Team[], teamId: string): string {
+  const sorted = [...teams].sort((a, b) => a.id.localeCompare(b.id))
+  const index = sorted.findIndex((t) => t.id === teamId)
+  return TEAM_COLORS[Math.max(index, 0) % TEAM_COLORS.length]
+}
 
 const gridStyle: CSSProperties = {
   display: 'grid',
@@ -67,7 +76,9 @@ export function TeamScoreboard({
           <div key={t.id} style={cardStyle(color, isActive, hasActive)}>
             <div style={nameRowStyle}>
               <span style={nameStyle}>{t.name}</span>
-              <span style={scoreStyle(color)}>{t.score}</span>
+              <span key={t.score} className="score-pop" style={scoreStyle(color)}>
+                {t.score}
+              </span>
             </div>
           </div>
         )

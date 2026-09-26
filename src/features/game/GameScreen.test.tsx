@@ -36,6 +36,7 @@ describe('GameScreen', () => {
         myMutedUntil={null}
         players={[]}
         totalRounds={3}
+        onLeave={vi.fn()}
       />
     )
     await waitFor(() => expect(screen.getByText(/cold/i)).toBeInTheDocument())
@@ -56,8 +57,9 @@ describe('GameScreen', () => {
         myMutedUntil={null}
         players={[]}
         totalRounds={3}
+        onLeave={vi.fn()}
       />
     )
-    await waitFor(() => expect(screen.getByText(/waiting for the clue/i)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/is thinking/i)).toBeInTheDocument())
   })
 })

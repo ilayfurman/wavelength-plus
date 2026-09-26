@@ -6,9 +6,10 @@ interface GameHeaderProps {
   total: number
   room?: string
   onMenu?: () => void
+  onLeave?: () => void
 }
 
-export function GameHeader({ round, total, room, onMenu }: GameHeaderProps) {
+export function GameHeader({ round, total, room, onMenu, onLeave }: GameHeaderProps) {
   const hasRoom = !!room
   const logoSize = hasRoom ? 'md' : 'sm'
   const fontSize = hasRoom ? 15 : 12
@@ -83,6 +84,26 @@ export function GameHeader({ round, total, room, onMenu }: GameHeaderProps) {
 
   return (
     <div style={containerStyle}>
+      {onLeave && (
+        <button
+          onClick={onLeave}
+          aria-label="Leave game"
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,.06)',
+            border: '1px solid rgba(200,180,255,.16)',
+            color: '#F4F2FB',
+            fontSize: 22,
+            lineHeight: 1,
+            cursor: 'pointer',
+            flex: 'none',
+          }}
+        >
+          ‹
+        </button>
+      )}
       <Logo variant="inline" size={logoSize} />
       <div style={{ flex: 1 }} />
       <span style={progressTextStyle}>Round {round}/{total}</span>

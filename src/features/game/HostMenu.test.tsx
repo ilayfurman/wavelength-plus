@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { HostMenu } from './HostMenu'
 import { supabase } from '../../lib/supabaseClient'
 
-const partySettings = { team_size: 2, rounds: 3, team_mode: 'random', noises_enabled: true }
+const partySettings = { num_teams: 2, rounds: 3, team_mode: 'random', noises_enabled: true }
 const players = [
   { id: 'host-1', display_name: 'Host' },
   { id: 'p2', display_name: 'Riley' },
@@ -31,7 +31,6 @@ describe('HostMenu', () => {
         open={false}
         onClose={vi.fn()}
         partyId="party-1"
-        currentPsychicName="Riley"
         players={players}
         myPlayerId="host-1"
       />
@@ -45,7 +44,6 @@ describe('HostMenu', () => {
         open
         onClose={vi.fn()}
         partyId="party-1"
-        currentPsychicName="Riley"
         players={players}
         myPlayerId="host-1"
       />
@@ -62,7 +60,6 @@ describe('HostMenu', () => {
         open
         onClose={vi.fn()}
         partyId="party-1"
-        currentPsychicName="Riley"
         players={players}
         myPlayerId="host-1"
         onMuteSuccess={onMuteSuccess}
@@ -75,47 +72,12 @@ describe('HostMenu', () => {
     expect(onMuteSuccess).toHaveBeenCalled()
   })
 
-  it('calls skip_turn with the party id when force-skip is tapped', async () => {
-    render(
-      <HostMenu
-        open
-        onClose={vi.fn()}
-        partyId="party-1"
-        currentPsychicName="Riley"
-        players={players}
-        myPlayerId="host-1"
-      />
-    )
-    fireEvent.click(screen.getByRole('button', { name: /force-skip riley's turn/i }))
-    await waitFor(() => expect(supabase.rpc).toHaveBeenCalledWith('skip_turn', { p_party_id: 'party-1' }))
-  })
-
-  it('requires a second tap before calling end_game', async () => {
-    render(
-      <HostMenu
-        open
-        onClose={vi.fn()}
-        partyId="party-1"
-        currentPsychicName="Riley"
-        players={players}
-        myPlayerId="host-1"
-      />
-    )
-    const endButton = screen.getByRole('button', { name: /end game for everyone/i })
-    fireEvent.click(endButton)
-    expect(supabase.rpc).not.toHaveBeenCalledWith('end_game', expect.anything())
-    const confirmButton = await screen.findByRole('button', { name: /tap again to confirm/i })
-    fireEvent.click(confirmButton)
-    await waitFor(() => expect(supabase.rpc).toHaveBeenCalledWith('end_game', { p_party_id: 'party-1' }))
-  })
-
   it('toggles noises via set_noises_enabled (not set_party_settings, which is lobby-only)', async () => {
     render(
       <HostMenu
         open
         onClose={vi.fn()}
         partyId="party-1"
-        currentPsychicName="Riley"
         players={players}
         myPlayerId="host-1"
       />
@@ -140,7 +102,6 @@ describe('HostMenu', () => {
         open
         onClose={vi.fn()}
         partyId="party-1"
-        currentPsychicName="Riley"
         players={players}
         myPlayerId="host-1"
       />
@@ -159,7 +120,6 @@ describe('HostMenu', () => {
         open
         onClose={onClose}
         partyId="party-1"
-        currentPsychicName="Riley"
         players={players}
         myPlayerId="host-1"
       />

@@ -6,3 +6,69 @@ body {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
+
+@keyframes score-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+.score-pop {
+  animation: score-pop 0.5s ease-out both;
+}
+
+@keyframes band-glow {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(255,255,255,0)); }
+  50% { filter: drop-shadow(0 0 12px rgba(255,255,255,.85)); }
+}
+
+/* No visible ring on a plain click/tap — the dial already has its own glow;
+   the element stays keyboard-focusable (arrow keys still drag it), just
+   without the browser's default focus rectangle on top of it. */
+.dialfan-svg:focus {
+  outline: none;
+}
+
+@keyframes team-card-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes team-member-in {
+  from { opacity: 0; transform: translateX(-8px) scale(0.9); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+/* Points earned this turn: pop in big, hold, then shrink/fly up toward the
+   scoreboard and fade — timed to land exactly when the real total updates. */
+@keyframes score-reveal-fly {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+  18% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+  32% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -190px) scale(0.35); }
+}
+
+@keyframes sound-pop-float {
+  0% { opacity: 0; transform: translate(-50%, 40px) scale(0.7); }
+  20% { opacity: 1; transform: translate(-50%, 0) scale(1.1); }
+  70% { opacity: 1; transform: translate(-50%, -90px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -170px) scale(0.95); }
+}
+
+@keyframes reveal-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Zero points: nothing to fly toward the total, so it gets a goofy wobble
+   in place instead. */
+@keyframes score-reveal-whiff {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5) rotate(0deg); }
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(1.15) rotate(-10deg); }
+  30% { transform: translate(-50%, -50%) scale(1) rotate(10deg); }
+  45% { transform: translate(-50%, -50%) scale(1) rotate(-7deg); }
+  60% { transform: translate(-50%, -50%) scale(1) rotate(5deg); }
+  75% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.7) rotate(0deg); }
+}

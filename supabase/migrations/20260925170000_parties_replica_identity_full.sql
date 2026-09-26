@@ -1,0 +1,14 @@
+-- The guest-side "quick start" reveal watched a `shuffleNonce` piece of
+-- React state, comparing it against a separately-fetched "baseline" ref to
+-- decide whether a change was a live event or just the party's pre-existing
+-- state. That has an inherent race: if a player joins right as the host
+-- clicks Shuffle/Start, their own first settings fetch can land AFTER the
+-- nonce has already bumped, so it gets absorbed into the baseline and is
+-- never seen as "a shuffle just happened" at all — exactly what produced
+-- "the reveal only showed for the host". The fix is to stop comparing
+-- against a separately-tracked value and instead diff old vs new directly
+-- within the SAME realtime event, which is atomic and can't race against a
+-- separate fetch. That requires the old row to actually carry shuffle_nonce
+-- (not just the primary key), which needs REPLICA IDENTITY FULL — same fix
+-- already applied to players/teams for the same class of problem.
+alter table public.parties replica identity full;

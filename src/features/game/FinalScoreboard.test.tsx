@@ -8,7 +8,7 @@ describe('FinalScoreboard', () => {
       <FinalScoreboard
         teams={[{ id: 'a', name: 'Tacos', score: 5 }, { id: 'b', name: 'Yikes', score: 9 }]}
         onPlayAgain={vi.fn()}
-        onNewTeams={vi.fn()}
+        onLeave={vi.fn()}
       />
     )
     const rows = screen.getAllByTestId('final-team-row')
@@ -16,22 +16,13 @@ describe('FinalScoreboard', () => {
     expect(rows[1]).toHaveTextContent('Tacos')
   })
 
-  it('calls onPlayAgain and onNewTeams', () => {
+  it('calls onPlayAgain and onLeave', () => {
     const onPlayAgain = vi.fn()
-    const onNewTeams = vi.fn()
-    render(<FinalScoreboard teams={[]} onPlayAgain={onPlayAgain} onNewTeams={onNewTeams} />)
+    const onLeave = vi.fn()
+    render(<FinalScoreboard teams={[]} onPlayAgain={onPlayAgain} onLeave={onLeave} />)
     fireEvent.click(screen.getByRole('button', { name: /play again/i }))
-    fireEvent.click(screen.getByRole('button', { name: /new teams/i }))
+    fireEvent.click(screen.getByRole('button', { name: /leave game/i }))
     expect(onPlayAgain).toHaveBeenCalled()
-    expect(onNewTeams).toHaveBeenCalled()
-  })
-
-  it('calls onBackToHome when provided and the button is clicked', () => {
-    const onBackToHome = vi.fn()
-    render(
-      <FinalScoreboard teams={[]} onPlayAgain={vi.fn()} onNewTeams={vi.fn()} onBackToHome={onBackToHome} />
-    )
-    fireEvent.click(screen.getByRole('button', { name: /back to home/i }))
-    expect(onBackToHome).toHaveBeenCalled()
+    expect(onLeave).toHaveBeenCalled()
   })
 })

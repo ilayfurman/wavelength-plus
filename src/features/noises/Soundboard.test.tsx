@@ -16,19 +16,19 @@ vi.mock('../../lib/supabaseClient', () => ({
 describe('Soundboard', () => {
   it('broadcasts a noise event when a sound button is tapped', () => {
     render(<Soundboard partyId="p1" myPlayerId="me" mutedUntil={null} isHost={false} players={[]} />)
-    fireEvent.click(screen.getByRole('button', { name: /airhorn/i }))
-    expect(mockChannel.send).toHaveBeenCalledWith({ type: 'broadcast', event: 'noise', payload: { sound: 'airhorn' } })
+    fireEvent.click(screen.getByRole('button', { name: /fart/i }))
+    expect(mockChannel.send).toHaveBeenCalledWith({ type: 'broadcast', event: 'noise', payload: { sound: 'fart' } })
   })
 
   it('does not broadcast while muted', () => {
     render(<Soundboard partyId="p1" myPlayerId="me" mutedUntil={new Date(Date.now() + 10000).toISOString()} isHost={false} players={[]} />)
-    fireEvent.click(screen.getByRole('button', { name: /airhorn/i }))
+    fireEvent.click(screen.getByRole('button', { name: /fart/i }))
     expect(mockChannel.send).not.toHaveBeenCalled()
   })
 
   it('hides the sound buttons when noises are disabled', () => {
     render(<Soundboard partyId="p1" myPlayerId="me" mutedUntil={null} isHost={false} players={[]} noisesEnabled={false} />)
-    expect(screen.queryByRole('button', { name: /airhorn/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /fart/i })).not.toBeInTheDocument()
   })
 
   it('lets the host mute another player', async () => {
