@@ -38,12 +38,12 @@ export function Home({
   const chars = roomCode.padEnd(ROOM_CODE_LENGTH, ' ').split('')
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
+    <div style={{ position: 'relative', minHeight: '100dvh', overflow: 'hidden', background: 'var(--bg)' }}>
       <Starfield />
       <div
         style={{
           position: 'relative',
-          minHeight: '100vh',
+          minHeight: '100dvh',
           display: 'flex',
           flexDirection: 'column',
           padding: '32px 16px',

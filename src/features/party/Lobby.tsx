@@ -332,7 +332,11 @@ export function Lobby({
   async function loadMyPacks() {
     const userId = (await supabase.auth.getUser()).data.user?.id
     if (!userId) return
-    const { data } = await supabase.from('packs').select('id, name, share_code').eq('owner_id', userId)
+    // Includes public packs (the Starter deck) alongside the host's own —
+    // otherwise, once Starter is removed from a party, it has no share code
+    // visible anywhere in the UI to type back in, and becomes permanently
+    // unreachable except by someone who already happens to know it's "STARTER".
+    const { data } = await supabase.from('packs').select('id, name, share_code').or(`owner_id.eq.${userId},is_public.eq.true`)
     setMyPacks((data as { id: string; name: string; share_code: string }[]) ?? [])
   }
 
@@ -695,12 +699,12 @@ export function Lobby({
   const iNeedToPick = teamMode === 'manual' && !myTeamId
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
+    <div style={{ position: 'relative', minHeight: '100dvh', overflow: 'hidden', background: 'var(--bg)' }}>
       <Starfield />
       <div
         style={{
           position: 'relative',
-          minHeight: '100vh',
+          minHeight: '100dvh',
           display: 'flex',
           flexDirection: 'column',
           padding: '32px 16px',
@@ -1266,7 +1270,8 @@ export function Lobby({
                 <span style={labelStyle}>Packs</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={mutedStyle}>
-                    {attachedPacks.length}/{1 + myPacks.length} packs selected
+                    {attachedPacks.length}/
+                    {new Set([...attachedPacks.map((p) => p.id), ...myPacks.map((p) => p.id)]).size} packs selected
                   </span>
                   <span style={{ color: 'var(--text-muted)', fontSize: 18, transform: packsExpanded ? 'rotate(90deg)' : 'none' }}>›</span>
                 </span>

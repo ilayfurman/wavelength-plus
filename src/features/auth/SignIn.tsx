@@ -109,37 +109,38 @@ export function SignIn() {
   }
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
+    <div style={{ position: 'relative', minHeight: '100dvh', overflow: 'hidden', background: 'var(--bg)' }}>
       <Starfield />
       <div
         style={{
           position: 'relative',
-          minHeight: '100vh',
+          minHeight: '100dvh',
           maxWidth: 480,
           margin: '0 auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: 16,
-          padding: '32px 20px',
+          gap: 12,
+          padding: '20px 20px',
           boxSizing: 'border-box',
         }}
       >
         {!codeSent ? (
-          <form onSubmit={sendCode} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <form onSubmit={sendCode} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
             <div
               style={{
                 flex: 1,
+                minHeight: 0,
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
                 alignItems: 'center',
-                gap: 18,
+                gap: 10,
               }}
             >
-              <div style={{ width: '100%', maxWidth: 280 }}>
+              <div style={{ width: '100%', maxWidth: 190 }}>
                 <DialFan value={0.3} revealedTarget={0.64} />
               </div>
-              <Logo variant="stacked" size="lg" />
+              <Logo variant="stacked" size="md" />
               <p
                 style={{
                   margin: 0,

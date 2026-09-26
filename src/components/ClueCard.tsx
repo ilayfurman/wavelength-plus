@@ -35,6 +35,17 @@ const sizeConfig: Record<Size, { fs: number; lh: number; ls: number; rad: number
   lg: { fs: 52, lh: 58, ls: 12, rad: 22, pad: '16px 18px' },
 }
 
+/** Scales the clue's font size down as it gets longer, so a wordy clue stays
+ * inside the card (wrapping onto a second line at the smaller sizes) instead
+ * of overflowing past its edges at a fixed size meant for a short phrase. */
+function clueFontSize(text: string, base: number): number {
+  const len = text.length
+  if (len <= 18) return base
+  if (len <= 26) return base * 0.82
+  if (len <= 36) return base * 0.68
+  return base * 0.56
+}
+
 export function ClueCard({
   label,
   clue,
@@ -75,8 +86,11 @@ export function ClueCard({
   }
 
   const clueStyle: CSSProperties = {
-    font: `600 ${config.fs}px/${config.lh}px Fredoka, Rubik, sans-serif`,
-    whiteSpace: 'nowrap',
+    font: `600 ${clueFontSize(clue, config.fs)}px/1.15 Fredoka, Rubik, sans-serif`,
+    whiteSpace: 'normal',
+    overflowWrap: 'break-word',
+    textAlign: 'center',
+    maxWidth: '100%',
   }
 
   const inputStyle: CSSProperties = {
@@ -88,7 +102,7 @@ export function ClueCard({
     border: 'none',
     outline: 'none',
     color: '#fff',
-    font: `600 ${config.fs}px/1 Fredoka, Rubik, sans-serif`,
+    font: `600 ${clueFontSize(inputValue, config.fs)}px/1 Fredoka, Rubik, sans-serif`,
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -41,12 +41,12 @@ export function NameAvatarStep({
   const [avatar, setAvatar] = useState(initialAvatar)
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
+    <div style={{ position: 'relative', minHeight: '100dvh', overflow: 'hidden', background: 'var(--bg)' }}>
       <Starfield />
       <div
         style={{
           position: 'relative',
-          minHeight: '100vh',
+          minHeight: '100dvh',
           maxWidth: 480,
           margin: '0 auto',
           display: 'flex',

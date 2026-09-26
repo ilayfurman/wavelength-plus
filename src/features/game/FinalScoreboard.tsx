@@ -11,14 +11,14 @@ const TEAM_COLORS = ['#FF6FA3', '#5BD6FF', '#8C6BFF', '#FFD166']
 
 const containerStyle: CSSProperties = {
   position: 'relative',
-  minHeight: '100vh',
+  minHeight: '100dvh',
   overflow: 'hidden',
   background: 'var(--bg)',
 }
 
 const contentStyle: CSSProperties = {
   position: 'relative',
-  minHeight: '100vh',
+  minHeight: '100dvh',
   display: 'flex',
   flexDirection: 'column',
   padding: '32px 16px',
